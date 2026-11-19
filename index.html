@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. - Web AI Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #060911;
+            --card-bg: rgba(11, 17, 30, 0.85);
+            --border-glow: #162b47;
+            --cyan: #00f0ff;
+            --electric-blue: #0077ff;
+            --neon-green: #00ff66;
+            --neon-amber: #ffaa00;
+            --neon-red: #ff3366;
+            --text-dim: #7e9bb8;
+            --text-bright: #e2edfa;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-bright);
+            font-family: 'Rajdhani', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 20%, rgba(0, 240, 255, 0.08) 0%, transparent 60%),
+                linear-gradient(to bottom, #060911, #080f1d);
+        }
+
+        /* Top Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background: rgba(13, 21, 39, 0.9);
+            border-bottom: 1px solid var(--border-glow);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: var(--cyan);
+            letter-spacing: 3px;
+            text-shadow: 0 0 12px rgba(0, 240, 255, 0.6);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge-core {
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            background: rgba(0, 240, 255, 0.15);
+            border: 1px solid var(--cyan);
+            border-radius: 4px;
+            color: var(--cyan);
+        }
+
+        .header-meta {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            display: flex;
+            gap: 20px;
+        }
+
+        /* Main Container */
+        main {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 20px;
+            padding: 20px 30px;
+            flex: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        @media (max-width: 900px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* HUD Card */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Arc Reactor Canvas Container */
+        .reactor-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #reactorCanvas {
+            width: 320px;
+            height: 320px;
+        }
+
+        .status-pill {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 6px 18px;
+            border-radius: 20px;
+            margin-top: 10px;
+            letter-spacing: 1.5px;
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--cyan);
+            border: 1px solid var(--cyan);
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        /* Control Buttons */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        button {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid var(--border-glow);
+            background: #12213a;
+            color: var(--cyan);
+            letter-spacing: 1px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background: var(--cyan);
+            color: #060911;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+        }
+
+        button.primary-btn {
+            background: var(--cyan);
+            color: #060911;
+            grid-column: span 2;
+            font-size: 0.95rem;
+            border: none;
+        }
+
+        button.primary-btn:hover {
+            background: #4facfe;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.8);
+        }
+
+        button.listening-active {
+            background: var(--neon-green) !important;
+            color: #060911 !important;
+            animation: pulse-btn 1s infinite alternate;
+        }
+
+        @keyframes pulse-btn {
+            from { box-shadow: 0 0 10px rgba(0, 255, 102, 0.4); }
+            to { box-shadow: 0 0 25px rgba(0, 255, 102, 0.9); }
+        }
+
+        /* Console Terminal */
+        .terminal-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-glow);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .terminal-logs {
+            flex: 1;
+            overflow-y: auto;
+            margin: 15px 0;
+            padding-right: 8px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            max-height: 440px;
+        }
+
+        .terminal-logs::-webkit-scrollbar {
+            width: 5px;
+        }
+        .terminal-logs::-webkit-scrollbar-thumb {
+            background: var(--border-glow);
+            border-radius: 4px;
+        }
+
+        .log-line {
+            margin-bottom: 12px;
+            animation: fadeIn 0.2s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .log-sender-jarvis {
+            color: var(--cyan);
+            font-weight: bold;
+        }
+
+        .log-sender-user {
+            color: #ff9900;
+            font-weight: bold;
+        }
+
+        .log-sender-sys {
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        /* Input Bar */
+        .input-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: auto;
+        }
+
+        .input-bar input {
+            flex: 1;
+            background: #0b111e;
+            border: 1px solid var(--border-glow);
+            border-radius: 6px;
+            padding: 12px 16px;
+            color: var(--cyan);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1rem;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        .input-bar input:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+        }
+
+        /* Quick Widgets Panel */
+        .widgets-section {
+            grid-column: span 2;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 900px) {
+            .widgets-section {
+                grid-column: span 1;
+            }
+        }
+
+        .widget-card {
+            background: rgba(13, 21, 39, 0.6);
+            border: 1px solid var(--border-glow);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .widget-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            color: var(--cyan);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 0.95rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .device-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .badge-on { background: rgba(0, 255, 102, 0.2); color: var(--neon-green); border: 1px solid var(--neon-green); }
+        .badge-off { background: rgba(255, 51, 102, 0.2); color: var(--neon-red); border: 1px solid var(--neon-red); }
+
+        /* Camera Modal */
+        #cameraModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        #webcamVideo {
+            width: 480px;
+            height: 360px;
+            border: 2px solid var(--cyan);
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.6);
+            object-fit: cover;
+        }
+
+        .scan-overlay {
+            position: relative;
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 3px;
+            background: var(--cyan);
+            box-shadow: 0 0 15px var(--cyan);
+            animation: scanAnim 2s infinite linear;
+        }
+
+        @keyframes scanAnim {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Bar -->
+    <header>
+        <div class="logo">
+            J.A.R.V.I.S.
+            <span class="badge-core">ONLINE v2.5</span>
+        </div>
+        <div class="header-meta">
+            <span id="liveClock">00:00:00</span>
+            <span id="liveDate">Loading date...</span>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main>
+        <!-- Left: Arc Reactor & Controls -->
+        <section class="card reactor-box">
+            <canvas id="reactorCanvas" width="320" height="320"></canvas>
+            <div id="statusPill" class="status-pill">SYSTEM ONLINE (IDLE)</div>
+
+            <div class="controls-grid">
+                <button id="micBtn" class="primary-btn">🎤 TAP TO SPEAK</button>
+                <button id="briefingBtn">⚡ DAILY BRIEFING</button>
+                <button id="faceBtn">👁 FACE SCAN</button>
+                <button id="musicBtn">🎵 PLAY MUSIC</button>
+                <button id="weatherBtn">⛅ WEATHER</button>
+            </div>
+        </section>
+
+        <!-- Right: Diagnostic Console -->
+        <section class="card terminal-container">
+            <div class="terminal-header">
+                <span>DIAGNOSTIC CONSOLE // SPEECH TERMINAL</span>
+                <span id="speechSupport">WEB SPEECH READY</span>
+            </div>
+
+            <div id="terminalLogs" class="terminal-logs">
+                <div class="log-line">
+                    <span class="log-sender-sys">[SYSTEM]:</span> J.A.R.V.I.S. Web Engine Initialized.
+                </div>
+                <div class="log-line">
+                    <span class="log-sender-sys">[SYSTEM]:</span> Say "Hey Jarvis" or click "TAP TO SPEAK" to begin.
+                </div>
+                <div class="log-line">
+                    <span class="log-sender-jarvis">[JARVIS]:</span> All cognitive and speech synthesis systems are operational, Boss. How may I assist you today?
+                </div>
+            </div>
+
+            <div class="input-bar">
+                <input type="text" id="commandInput" placeholder="Type command (e.g. 'what time is it', 'weather', 'play music')...">
+                <button id="sendBtn">SEND ➤</button>
+            </div>
+        </section>
+
+        <!-- Bottom Widgets Section -->
+        <section class="widgets-section">
+            <!-- Smart Home Hub -->
+            <div class="widget-card">
+                <div class="widget-title">
+                    <span>🏠 SMART HOME HUB</span>
+                    <span style="font-size: 0.7rem; color: var(--text-dim);">VOICE SYNCED</span>
+                </div>
+                <div class="device-item">
+                    <span>Living Room Light</span>
+                    <span id="dev-light" class="device-badge badge-off" onclick="toggleDevice('light')">OFF</span>
+                </div>
+                <div class="device-item">
+                    <span>Air Conditioner (22°C)</span>
+                    <span id="dev-ac" class="device-badge badge-on" onclick="toggleDevice('ac')">ON</span>
+                </div>
+                <div class="device-item">
+                    <span>Main Door Lock</span>
+                    <span id="dev-door" class="device-badge badge-on" onclick="toggleDevice('door')">LOCKED</span>
+                </div>
+            </div>
+
+            <!-- Productivity & Tasks -->
+            <div class="widget-card">
+                <div class="widget-title">
+                    <span>📋 TASKS & TO-DO</span>
+                    <span id="taskCount" style="font-size: 0.75rem; color: var(--cyan);">2 Tasks</span>
+                </div>
+                <div id="todoList" style="font-size: 0.9rem; line-height: 1.8;">
+                    <div>• Test voice commands with microphone</div>
+                    <div>• Check live weather forecast</div>
+                </div>
+            </div>
+
+            <!-- Notes & Memory -->
+            <div class="widget-card">
+                <div class="widget-title">
+                    <span>🧠 PERSISTENT MEMORY</span>
+                    <span style="font-size: 0.75rem; color: var(--cyan);">Active</span>
+                </div>
+                <p id="memoryPreview" style="font-size: 0.88rem; color: var(--text-dim); line-height: 1.5;">
+                    User: Boss | Assistant: Jarvis | Location: Auto | Memory Buffer: Ready to remember user facts.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Face Recognition Scanner Modal -->
+    <div id="cameraModal">
+        <div class="scan-overlay">
+            <video id="webcamVideo" autoplay playsinline></video>
+            <div class="scan-line"></div>
+        </div>
+        <p id="scanStatus" style="font-family: 'Orbitron', sans-serif; color: var(--cyan); margin-top: 20px; letter-spacing: 2px;">
+            SCANNING FACIAL BIOMETRICS...
+        </p>
+        <button onclick="closeCameraModal()" style="margin-top: 15px; background: var(--border-glow); color: #fff;">CANCEL</button>
+    </div>
+
+    <script>
+        // =========================================================================
+        //                         SYSTEM STATE & MEMORY
+        // =========================================================================
+        const memory = {
+            userName: "Boss",
+            city: "London",
+            todos: [
+                "Test voice recognition",
+                "Try saying 'give me daily briefing'"
+            ],
+            devices: {
+                light: false,
+                ac: true,
+                door: true
+            },
+            facts: {}
+        };
+
+        let currentState = "idle"; // 'idle' | 'listening' | 'processing' | 'speaking'
+        let synth = window.speechSynthesis;
+        let recognition = null;
+        let isListening = false;
+
+        // =========================================================================
+        //                          ARC-REACTOR ANIMATION
+        // =========================================================================
+        const canvas = document.getElementById("reactorCanvas");
+        const ctx = canvas.getContext("2d");
+        let angle = 0;
+        let wavePhase = 0;
+
+        function animateReactor() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            let coreColor = "#00f0ff";
+            let ringColor = "#164e63";
+
+            if (currentState === "listening") {
+                coreColor = "#00ff66";
+                ringColor = "#009944";
+            } else if (currentState === "processing") {
+                coreColor = "#ffaa00";
+                ringColor = "#cc8800";
+            } else if (currentState === "speaking") {
+                coreColor = "#0077ff";
+                ringColor = "#00f0ff";
+            }
+
+            // 1. Outer Segmented Ring
+            angle = (angle + 0.02) % (Math.PI * 2);
+            const rOuter = 100;
+            const segments = 8;
+            for (let i = 0; i < segments; i++) {
+                const start = angle + (i * (Math.PI * 2 / segments));
+                const end = start + (Math.PI * 2 / segments) - 0.2;
+                ctx.beginPath();
+                ctx.arc(cx, cy, rOuter, start, end);
+                ctx.strokeStyle = ringColor;
+                ctx.lineWidth = 4;
+                ctx.stroke();
+            }
+
+            // 2. Middle Counter-Rotating Ticks
+            const rMid = 80;
+            const counterAngle = -angle * 1.5;
+            for (let i = 0; i < 16; i++) {
+                const rad = counterAngle + (i * (Math.PI * 2 / 16));
+                const x1 = cx + (rMid - 6) * Math.cos(rad);
+                const y1 = cy + (rMid - 6) * Math.sin(rad);
+                const x2 = cx + (rMid + 6) * Math.cos(rad);
+                const y2 = cy + (rMid + 6) * Math.sin(rad);
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = coreColor;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // 3. Inner Pulsing Core
+            wavePhase += 0.08;
+            const pulse = Math.sin(wavePhase) * 6;
+            const rPulse = 55 + pulse;
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, rPulse, 0, Math.PI * 2);
+            ctx.strokeStyle = coreColor;
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = coreColor;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Inner solid glow
+            ctx.beginPath();
+            ctx.arc(cx, cy, rPulse * 0.5, 0, Math.PI * 2);
+            ctx.fillStyle = coreColor;
+            ctx.fill();
+
+            // Core Text
+            ctx.fillStyle = "#060911";
+            ctx.font = "bold 12px Orbitron";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("ARC-IV", cx, cy);
+
+            // 4. Soundwave Visualizer Bars
+            const waveY = 285;
+            const numBars = 18;
+            const spacing = 12;
+            const startX = cx - ((numBars * spacing) / 2);
+
+            for (let i = 0; i < numBars; i++) {
+                let barH = 4;
+                if (currentState === "speaking" || currentState === "listening") {
+                    barH = Math.abs(Math.sin(wavePhase + (i * 0.5))) * 28 + 4;
+                } else {
+                    barH = 3 + Math.sin(wavePhase * 0.5 + i) * 2;
+                }
+                const bx = startX + (i * spacing);
+                ctx.beginPath();
+                ctx.moveTo(bx, waveY - (barH / 2));
+                ctx.lineTo(bx, waveY + (barH / 2));
+                ctx.strokeStyle = coreColor;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+
+            requestAnimationFrame(animateReactor);
+        }
+        animateReactor();
+
+        // =========================================================================
+        //                          UI & LOGGING
+        // =========================================================================
+        function updateStatus(state, label) {
+            currentState = state;
+            const pill = document.getElementById("statusPill");
+            const micBtn = document.getElementById("micBtn");
+
+            const colors = {
+                idle: { text: "SYSTEM ONLINE (IDLE)", color: "var(--cyan)", bg: "rgba(0, 240, 255, 0.1)" },
+                listening: { text: "LISTENING...", color: "var(--neon-green)", bg: "rgba(0, 255, 102, 0.15)" },
+                processing: { text: "PROCESSING...", color: "var(--neon-amber)", bg: "rgba(255, 170, 0, 0.15)" },
+                speaking: { text: "SPEAKING...", color: "var(--cyan)", bg: "rgba(0, 119, 255, 0.2)" }
+            };
+
+            const cfg = colors[state] || colors.idle;
+            pill.innerText = label || cfg.text;
+            pill.style.color = cfg.color;
+            pill.style.borderColor = cfg.color;
+            pill.style.background = cfg.bg;
+
+            if (state === "listening") {
+                micBtn.classList.add("listening-active");
+                micBtn.innerText = "🛑 LISTENING...";
+            } else {
+                micBtn.classList.remove("listening-active");
+                micBtn.innerText = "🎤 TAP TO SPEAK";
+            }
+        }
+
+        function logMessage(sender, text) {
+            const logs = document.getElementById("terminalLogs");
+            const div = document.createElement("div");
+            div.className = "log-line";
+
+            let senderClass = "log-sender-sys";
+            if (sender.toLowerCase() === "jarvis") senderClass = "log-sender-jarvis";
+            if (sender.toLowerCase() === "user") senderClass = "log-sender-user";
+
+            div.innerHTML = `<span class="${senderClass}">[${sender.toUpperCase()}]:</span> ${text}`;
+            logs.appendChild(div);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function speak(text) {
+            if (!synth) return;
+            synth.cancel(); // Stop any pending speech
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.05;
+            utterance.pitch = 1.0;
+
+            // Pick a good English voice
+            const voices = synth.getVoices();
+            const preferred = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Google") || v.name.includes("David") || v.name.includes("Mark")));
+            if (preferred) utterance.voice = preferred;
+
+            utterance.onstart = () => updateStatus("speaking");
+            utterance.onend = () => updateStatus("idle");
+            utterance.onerror = () => updateStatus("idle");
+
+            synth.speak(utterance);
+        }
+
+        // Clock Update
+        function updateClock() {
+            const now = new Date();
+            document.getElementById("liveClock").innerText = now.toLocaleTimeString();
+            document.getElementById("liveDate").innerText = now.toLocaleDateString(undefined, {
+                weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+            });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // =========================================================================
+        //                      SPEECH RECOGNITION (WEB SPEECH API)
+        // =========================================================================
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (SpeechRec) {
+            recognition = new SpeechRec();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = "en-US";
+
+            recognition.onstart = () => {
+                isListening = true;
+                updateStatus("listening");
+            };
+
+            recognition.onresult = (e) => {
+                const transcript = e.results[0][0].transcript;
+                logMessage("USER", transcript);
+                handleCommand(transcript);
+            };
+
+            recognition.onerror = (e) => {
+                console.warn("Speech error:", e.error);
+                updateStatus("idle");
+                isListening = false;
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                if (currentState === "listening") updateStatus("idle");
+            };
+        } else {
+            document.getElementById("speechSupport").innerText = "SPEECH API UNAVAILABLE (USE TYPING)";
+            document.getElementById("speechSupport").style.color = "var(--neon-amber)";
+        }
+
+        function toggleMic() {
+            if (!recognition) {
+                alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari, or use the text input below.");
+                return;
+            }
+            if (isListening) {
+                recognition.stop();
+            } else {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    recognition.stop();
+                }
+            }
+        }
+        document.getElementById("micBtn").addEventListener("click", toggleMic);
+
+        // Text input submit
+        function submitText() {
+            const input = document.getElementById("commandInput");
+            const query = input.value.trim();
+            if (query) {
+                input.value = "";
+                logMessage("USER", query);
+                handleCommand(query);
+            }
+        }
+        document.getElementById("sendBtn").addEventListener("click", submitText);
+        document.getElementById("commandInput").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") submitText();
+        });
+
+        // =========================================================================
+        //                          COMMAND DISPATCHER
+        // =========================================================================
+        async function handleCommand(rawQuery) {
+            updateStatus("processing");
+            const q = rawQuery.toLowerCase().trim();
+            let reply = "";
+
+            // 1. Time & Date
+            if (q.includes("time") || q.includes("what time")) {
+                const now = new Date();
+                reply = `The current time is ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`;
+            } else if (q.includes("date") || q.includes("today")) {
+                const now = new Date();
+                reply = `Today is ${now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}.`;
+            }
+
+            // 2. Daily Briefing
+            else if (q.includes("briefing") || q.includes("daily update")) {
+                const now = new Date();
+                const h = now.getHours();
+                const greeting = h < 12 ? "Good morning" : (h < 18 ? "Good afternoon" : "Good evening");
+                reply = `${greeting}, ${memory.userName}. All browser systems and smart home hubs are online. You have ${memory.todos.length} active tasks today.`;
+            }
+
+            // 3. Google Search
+            else if (q.startsWith("search google for ") || q.startsWith("google ") || q.startsWith("search for ")) {
+                const query = q.replace(/^(search google for|google|search for)\s+/, "");
+                reply = `Opening Google search for ${query}.`;
+                window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, "_blank");
+            }
+
+            // 4. Play Music
+            else if (q.includes("play music") || q.startsWith("play ")) {
+                const song = q.replace(/^(play music|play song|play)\s+/, "").replace(/\s+on youtube$/, "");
+                const searchTarget = song.length > 0 ? song : "Iron Man AC/DC";
+                reply = `Playing ${searchTarget} on YouTube.`;
+                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(searchTarget)}`, "_blank");
+            }
+
+            // 5. Live Weather
+            else if (q.includes("weather") || q.includes("temperature")) {
+                try {
+                    const res = await fetch("https://wttr.in/?format=j1");
+                    if (res.ok) {
+                        const data = await res.json();
+                        const current = data.current_condition[0];
+                        const area = data.nearest_area[0].areaName[0].value;
+                        reply = `The weather in ${area} is currently ${current.weatherDesc[0].value} with a temperature of ${current.temp_C} degrees Celsius and humidity at ${current.humidity}%.`;
+                    } else {
+                        reply = "Unable to fetch live weather at this moment.";
+                    }
+                } catch (e) {
+                    reply = "Weather service is currently unreachable.";
+                }
+            }
+
+            // 6. Smart Home Control
+            else if (q.includes("light") || q.includes("lights")) {
+                const newState = !memory.devices.light;
+                toggleDevice("light", newState);
+                reply = `Living room lights have been turned ${newState ? "ON" : "OFF"}.`;
+            } else if (q.includes("ac") || q.includes("air conditioner")) {
+                const newState = !memory.devices.ac;
+                toggleDevice("ac", newState);
+                reply = `Air conditioning has been switched ${newState ? "ON" : "OFF"}.`;
+            } else if (q.includes("door") || q.includes("lock")) {
+                const newState = !memory.devices.door;
+                toggleDevice("door", newState);
+                reply = `Main door has been ${newState ? "LOCKED" : "UNLOCKED"}.`;
+            }
+
+            // 7. Productivity: Add Tasks
+            else if (q.startsWith("add to-do") || q.startsWith("add task") || q.startsWith("todo ")) {
+                const task = q.replace(/^(add to-do|add task|todo)\s+/, "").trim();
+                if (task) {
+                    memory.todos.push(task);
+                    renderTodos();
+                    reply = `Task added: ${task}.`;
+                }
+            } else if (q.includes("clear to-do") || q.includes("clear tasks")) {
+                memory.todos = [];
+                renderTodos();
+                reply = "Your to-do list has been cleared.";
+            }
+
+            // 8. Face Scan
+            else if (q.includes("face") || q.includes("scan") || q.includes("biometric")) {
+                startFaceScan();
+                reply = "Initiating facial biometric scan.";
+            }
+
+            // 9. Wikipedia lookup
+            else if (q.includes("who is") || q.includes("what is")) {
+                const term = q.replace(/^(who is|what is|tell me about)\s+/, "").replace(/\?/, "");
+                try {
+                    const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(term)}`);
+                    if (wikiRes.ok) {
+                        const wikiData = await wikiRes.json();
+                        reply = wikiData.extract ? wikiData.extract.split(". ").slice(0, 2).join(". ") + "." : `I found information on ${term} on Wikipedia.`;
+                    } else {
+                        reply = `I could not find an immediate Wikipedia summary for ${term}.`;
+                    }
+                } catch (e) {
+                    reply = `Processed query: ${term}.`;
+                }
+            }
+
+            // 10. General Conversational Fallback
+            else {
+                if (q.includes("hello") || q.includes("hi") || q.includes("hey")) {
+                    reply = `Greetings, ${memory.userName}. All systems are standing by for your command.`;
+                } else if (q.includes("how are you")) {
+                    reply = "I am operating at 100% capacity and ready to assist you, Boss.";
+                } else if (q.includes("who are you")) {
+                    reply = "I am J.A.R.V.I.S., your Just A Rather Very Intelligent System.";
+                } else {
+                    reply = `I have received your instruction: "${rawQuery}". How else may I assist you?`;
+                }
+            }
+
+            logMessage("JARVIS", reply);
+            speak(reply);
+        }
+
+        // =========================================================================
+        //                          SMART HOME TOGGLES
+        // =========================================================================
+        function toggleDevice(device, forceState) {
+            if (typeof forceState !== "undefined") {
+                memory.devices[device] = forceState;
+            } else {
+                memory.devices[device] = !memory.devices[device];
+            }
+            const badge = document.getElementById(`dev-${device}`);
+            const state = memory.devices[device];
+
+            if (device === "door") {
+                badge.className = state ? "device-badge badge-on" : "device-badge badge-off";
+                badge.innerText = state ? "LOCKED" : "UNLOCKED";
+            } else {
+                badge.className = state ? "device-badge badge-on" : "device-badge badge-off";
+                badge.innerText = state ? "ON" : "OFF";
+            }
+        }
+
+        function renderTodos() {
+            const list = document.getElementById("todoList");
+            const count = document.getElementById("taskCount");
+            count.innerText = `${memory.todos.length} Tasks`;
+            list.innerHTML = memory.todos.map(t => `<div>• ${t}</div>`).join("") || "<div style='color: var(--text-dim);'>No active tasks.</div>";
+        }
+        renderTodos();
+
+        // =========================================================================
+        //                      FACE RECOGNITION SCANNER
+        // =========================================================================
+        let videoStream = null;
+
+        async function startFaceScan() {
+            const modal = document.getElementById("cameraModal");
+            const video = document.getElementById("webcamVideo");
+            const status = document.getElementById("scanStatus");
+            modal.style.display = "flex";
+            status.innerText = "ACTIVATING BIOMETRIC SENSORS...";
+
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = videoStream;
+                status.innerText = "SCANNING FACIAL BIOMETRICS...";
+
+                setTimeout(() => {
+                    status.innerText = "MATCH CONFIRMED: 99.8% - ACCESS GRANTED";
+                    speak(`Biometrics confirmed. Welcome back, ${memory.userName}.`);
+                    setTimeout(closeCameraModal, 2000);
+                }, 3000);
+            } catch (err) {
+                status.innerText = "CAMERA UNAVAILABLE (SIMULATING ACCESS GRANTED)";
+                setTimeout(() => {
+                    speak(`Biometric simulation complete. Welcome back, ${memory.userName}.`);
+                    closeCameraModal();
+                }, 2000);
+            }
+        }
+
+        function closeCameraModal() {
+            const modal = document.getElementById("cameraModal");
+            modal.style.display = "none";
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+        }
+
+        // Quick buttons
+        document.getElementById("briefingBtn").addEventListener("click", () => handleCommand("give me daily briefing"));
+        document.getElementById("faceBtn").addEventListener("click", startFaceScan);
+        document.getElementById("musicBtn").addEventListener("click", () => handleCommand("play music"));
+        document.getElementById("weatherBtn").addEventListener("click", () => handleCommand("weather"));
+    </script>
+</body>
+</html>

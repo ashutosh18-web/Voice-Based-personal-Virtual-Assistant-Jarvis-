@@ -1,68 +1,86 @@
-# J.A.R.V.I.S. - Advanced AI Desktop Voice Assistant
+# J.A.R.V.I.S. - Advanced AI Voice Assistant
 
-A complete, futuristic voice-activated AI desktop assistant built in Python.
+> **A futuristic, voice-activated AI assistant available both as a 1-click Live Web App and a Windows Desktop Application.**
 
-## 🌟 Key Features
-
-1. **Animated Futuristic GUI**:
-   - Arc-Reactor animated canvas with rotating segmented rings and pulsing core.
-   - Dynamic soundwave audio visualizer that reacts when speaking or listening.
-   - Diagnostic console displaying real-time speech transcription and assistant feedback.
-   - Live clock, date, and system status indicators.
-
-2. **Wake-Word Detection**:
-   - Continuous background listening for **"Hey Jarvis"**, **"Jarvis"**, or **"Wake up Jarvis"**.
-   - Push-to-talk mic button and keyboard text-entry fallback.
-
-3. **Time, Date & Daily Briefing**:
-   - Current time, formatted date, and one-command complete daily briefing.
-
-4. **Application Launcher**:
-   - Opens Notepad, Calculator, MS Paint, Google Chrome, Command Prompt, Task Manager, VS Code, Settings, and more.
-
-5. **Voice Search & Music Playback**:
-   - Voice-controlled Google searching and YouTube video/music playback.
-
-6. **Live Weather Forecast**:
-   - Fetches live temperature, weather conditions, humidity, and wind speed (via free Open-Meteo / wttr API without requiring API keys).
-
-7. **Intelligent Conversational Brain (LLM & Context Memory)**:
-   - Built-in multi-turn contextual conversational AI with memory.
-   - Direct integration with **Google Gemini API** (`GEMINI_API_KEY`) for deep reasoning and general knowledge.
-
-8. **Persistent Memory & Preferences**:
-   - Automatically saves user name, preferences, facts, and tasks to `jarvis_memory.json`.
-   - Remembers facts: *"remember that my car is red"*, *"what do you remember"*.
-
-9. **Smart Device / IoT Hub**:
-   - Controls simulated or connected smart devices: living room light, bedroom light, air conditioner temperature, fan, and door locks.
-
-10. **Productivity Suite**:
-    - **To-Do List**: Add, view, and clear tasks.
-    - **Quick Notes**: Record thoughts with timestamps to `jarvis_notes.txt`.
-    - **Timers**: Set countdown timers by voice (*"set a timer for 10 seconds"*).
-
-11. **Task & System Automation**:
-    - Take desktop screenshots (*saved automatically in the `screenshots/` folder*).
-    - Adjust system volume (volume up, volume down, mute).
-    - Lock Windows workstation securely.
-
-12. **Face Recognition & Biometrics**:
-    - Biometric verification scan using OpenCV Haar cascades (with simulated fallback if webcam is unavailable).
+[![Live Web Demo](https://img.shields.io/badge/🌐_Live_Demo-Open_JARVIS_Web_UI-00f0ff?style=for-the-badge)](https://ashutosh18-web.github.io/Voice-Based-personal-Virtual-Assistant-Jarvis-/)
 
 ---
 
-## 🚀 How to Run
+## 🌐 1-Click Online Live Web App (No Installation Needed!)
 
-1. Open your terminal in this directory:
+Anyone can test and talk to JARVIS directly in their browser without installing Python or opening a terminal:
+
+### 👉 **[Click Here to Launch JARVIS Live Web UI](https://ashutosh18-web.github.io/Voice-Based-personal-Virtual-Assistant-Jarvis-/)**
+
+---
+
+### How to Enable the 1-Click Live Link on Your GitHub:
+1. Push this latest commit to GitHub:
+   ```bash
+   git push origin main
+   ```
+2. Go to your repository on GitHub: [Voice-Based-personal-Virtual-Assistant-Jarvis-](https://github.com/ashutosh18-web/Voice-Based-personal-Virtual-Assistant-Jarvis-)
+3. Click on **Settings** (top right tab).
+4. In the left menu, click on **Pages**.
+5. Under **Build and deployment > Branch**:
+   - Change branch to **`main`**
+   - Folder: **`/ (root)`**
+   - Click **Save**.
+6. Wait 30–60 seconds, and your live assistant will be online at:
+   **https://ashutosh18-web.github.io/Voice-Based-personal-Virtual-Assistant-Jarvis-/**
+7. Go back to your repo code tab, click the gear icon ⚙ next to **About** on the top right, check **Use your GitHub Pages website**, and click **Save changes**.
+
+Now anyone visiting your GitHub repository can click the link and run JARVIS immediately!
+
+---
+
+## 🌟 Key Features
+
+1. **Futuristic Animated Arc-Reactor UI**:
+   - Rotating segmented holographic rings, pulsing glowing core, and real-time audio soundwave visualizer.
+2. **Real-time Voice Recognition & Speech Synthesis**:
+   - Speaks responses aloud and listens through your microphone.
+3. **Continuous Wake-Word Detection**:
+   - Responds to *"Hey Jarvis"*, *"Jarvis"*, or *"Wake up Jarvis"*.
+4. **Time, Date & Daily Briefing**:
+   - Instant time, formatted date, and a complete morning/evening briefing.
+5. **Live Weather Forecast**:
+   - Live temperature, weather conditions, humidity, and wind speed.
+6. **Voice Search & Media Playback**:
+   - Hands-free Google search and YouTube music playback.
+7. **Smart Home IoT Hub**:
+   - Real-time controls for living room lights, air conditioner temperature, and door locks.
+8. **Productivity Suite**:
+   - Task manager / to-do list, notes recorder, and countdown timers.
+9. **Face Recognition & Biometrics**:
+   - Biometric webcam scanner with face verification.
+10. **Desktop System Controls (Desktop Edition)**:
+    - Launch native applications (Notepad, Calculator, Paint, Chrome, VS Code).
+    - System volume adjustments, workstation lock, and desktop screenshots.
+
+---
+
+## 🖥️ Local Desktop Installation (Windows)
+
+If you want the full native desktop version with local Windows controls (Notepad, locking workstation, screenshots):
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/ashutosh18-web/Voice-Based-personal-Virtual-Assistant-Jarvis-.git
+   cd Voice-Based-personal-Virtual-Assistant-Jarvis-
+   ```
+
+2. **Install requirements:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Run JARVIS:**
    ```bash
    python jarvis.py
    ```
 
-2. Optional (for live camera face recognition):
-   ```bash
-   pip install opencv-python
-   ```
+*(Optional: Run `pip install opencv-python` for live webcam face detection).*
 
 ---
 
@@ -73,13 +91,12 @@ A complete, futuristic voice-activated AI desktop assistant built in Python.
 | **Wake Word** | *"Hey Jarvis"*, *"Jarvis"* |
 | **Time & Date** | *"What time is it?"*, *"Tell me today's date"* |
 | **Briefing** | *"Give me my daily briefing"* |
-| **Apps** | *"Open Notepad"*, *"Launch Calculator"*, *"Open Chrome"*, *"Open Paint"* |
 | **Search** | *"Search Google for Python tutorials"*, *"Google James Webb telescope"* |
 | **Music** | *"Play music"*, *"Play Believer on YouTube"* |
 | **Weather** | *"What is the weather?"*, *"Weather in New York"* |
-| **Memory** | *"Remember that my birthday is in July"*, *"What do you remember?"* |
 | **Smart Home** | *"Turn on the living room light"*, *"Set AC to 21 degrees"*, *"Lock the door"* |
-| **To-Dos & Notes** | *"Add to-do submit mini project"*, *"Show to-do list"*, *"Take a note buy groceries"* |
-| **System** | *"Take screenshot"*, *"Volume up"*, *"Mute"*, *"Lock screen"*, *"Set timer for 5 minutes"* |
+| **Productivity** | *"Add to-do finish presentation"*, *"Show to-do list"*, *"Set timer for 10 seconds"* |
 | **Biometrics** | *"Scan face"*, *"Face recognition"* |
 | **AI Questions** | *"Who is Albert Einstein?"*, *"Calculate 45 times 12"*, *"Tell me a science fact"* |
+| **Desktop Apps** | *"Open Notepad"*, *"Launch Calculator"*, *"Open Chrome"* |
+| **System** | *"Take screenshot"*, *"Volume up"*, *"Mute"*, *"Lock screen"* |
