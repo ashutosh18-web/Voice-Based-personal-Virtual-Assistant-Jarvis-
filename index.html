@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>J.A.R.V.I.S. - Web AI Assistant v2.7</title>
+    <title>J.A.R.V.I.S. - Web AI Assistant v2.8</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -154,6 +154,10 @@
             border: 1px solid var(--cyan);
             text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
             transition: all 0.3s ease;
+            max-width: 90%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         /* Control Buttons */
@@ -420,14 +424,14 @@
     <header>
         <div class="logo">
             J.A.R.V.I.S.
-            <span class="badge-core">ONLINE v2.7 [ACTIVE]</span>
+            <span class="badge-core">ONLINE v2.8 [ACTIVE]</span>
         </div>
         <div class="header-meta">
-            <label for="langSelect" style="color: var(--text-dim); font-size: 0.8rem;">Accent:</label>
+            <label for="langSelect" style="color: var(--text-dim); font-size: 0.8rem;">Language/Accent:</label>
             <select id="langSelect" class="lang-select">
-                <option value="en-IN" selected>English (India)</option>
-                <option value="en-US">English (US)</option>
-                <option value="en-GB">English (UK)</option>
+                <option value="en-IN" selected>English (India) - en-IN</option>
+                <option value="hi-IN">Hindi (India) - hi-IN</option>
+                <option value="en-US">English (US) - en-US</option>
             </select>
             <span id="liveClock">00:00:00</span>
             <span id="liveDate">Loading date...</span>
@@ -453,24 +457,24 @@
         <!-- Right: Diagnostic Console -->
         <section class="card terminal-container">
             <div class="terminal-header">
-                <span>DIAGNOSTIC CONSOLE // SPEECH TERMINAL</span>
+                <span>DIAGNOSTIC CONSOLE // CONTINUOUS STREAMING READY</span>
                 <span id="speechSupport">WEB SPEECH READY</span>
             </div>
 
             <div id="terminalLogs" class="terminal-logs">
                 <div class="log-line">
-                    <span class="log-sender-sys">[SYSTEM]:</span> J.A.R.V.I.S. Core v2.7 Online & Ready.
+                    <span class="log-sender-sys">[SYSTEM]:</span> J.A.R.V.I.S. Core v2.8 Online with Continuous Speech Recognition.
                 </div>
                 <div class="log-line">
-                    <span class="log-sender-sys">[SYSTEM]:</span> Try saying: "Open Google", "Open YouTube", "Weather", "Who is Elon Musk", "Calculate 45 times 2", or "Tell me a joke".
+                    <span class="log-sender-sys">[SYSTEM]:</span> Speak naturally: "Play Bhojpuri song", "Play Arijit Singh", "Open Google", "Open YouTube", or "Weather in Delhi".
                 </div>
                 <div class="log-line">
-                    <span class="log-sender-jarvis">[JARVIS]:</span> All systems operational, Boss. Say "Open Google" or tap the microphone, and I will assist you immediately.
+                    <span class="log-sender-jarvis">[JARVIS]:</span> All systems operational, Boss. Say "Play Bhojpuri song" or tap the microphone, and I will play it on YouTube immediately.
                 </div>
             </div>
 
             <div class="input-bar">
-                <input type="text" id="commandInput" placeholder="Type a command (e.g. 'open google', 'open youtube', 'weather')...">
+                <input type="text" id="commandInput" placeholder="Live speech preview or type here (e.g. 'play bhojpuri song', 'open google')...">
                 <button id="sendBtn">SEND ➤</button>
             </div>
         </section>
@@ -504,8 +508,8 @@
                     <span id="taskCount" style="font-size: 0.75rem; color: var(--cyan);">2 Tasks</span>
                 </div>
                 <div id="todoList" style="font-size: 0.9rem; line-height: 1.8;">
-                    <div>• Test voice commands with microphone</div>
-                    <div>• Try saying "Open Google" or "Open YouTube"</div>
+                    <div>• Test speech: "Play Bhojpuri song"</div>
+                    <div>• Test speech: "Open Google" or "Open YouTube"</div>
                 </div>
             </div>
 
@@ -516,9 +520,9 @@
                     <span style="font-size: 0.75rem; color: var(--cyan);">Active</span>
                 </div>
                 <p id="memoryPreview" style="font-size: 0.88rem; color: var(--text-dim); line-height: 1.5;">
-                    • App Launcher: YouTube, Google, WhatsApp, GitHub, Gmail<br>
-                    • Knowledge: Wikipedia Answers & Math Calculator<br>
-                    • Audio Echo Protection: Active
+                    • Multi-word Continuous Stream: Enabled<br>
+                    • Music Engine: YouTube Search & Playback<br>
+                    • Accent Support: English (India) & Hindi
                 </p>
             </div>
         </section>
@@ -544,8 +548,8 @@
             userName: "Boss",
             city: "Delhi",
             todos: [
-                "Test voice recognition",
-                "Try saying 'open google'"
+                "Test multi-word command: 'play bhojpuri song'",
+                "Test launcher: 'open google'"
             ],
             devices: {
                 light: false,
@@ -558,7 +562,9 @@
         let synth = window.speechSynthesis;
         let recognition = null;
         let isListening = false;
-        let isSpeaking = false; // CRITICAL FLAG: Blocks microphone feedback loop
+        let isSpeaking = false; // Blocks microphone feedback loop
+        let speechDebounceTimer = null;
+        let accumulatedSpeechText = "";
 
         // =========================================================================
         //                          ARC-REACTOR ANIMATION
@@ -725,9 +731,9 @@
         // =========================================================================
         function speak(text) {
             if (!synth) return;
-            synth.cancel(); // Stop any pending speech
+            synth.cancel();
 
-            // CRITICAL FIX: Stop microphone listening so Jarvis does not hear its own voice!
+            // Stop microphone immediately while speaking
             if (recognition && isListening) {
                 try { recognition.abort(); } catch(e){}
                 isListening = false;
@@ -740,7 +746,6 @@
             utterance.rate = 1.05;
             utterance.pitch = 1.0;
 
-            // Pick an English voice
             const voices = synth.getVoices();
             const preferred = voices.find(v => v.lang.includes("en") && 
                 (v.name.includes("India") || v.name.includes("Google") || v.name.includes("David") || v.name.includes("Natural")));
@@ -769,43 +774,76 @@
         updateClock();
 
         // =========================================================================
-        //                      SPEECH RECOGNITION (WEB SPEECH API)
+        //    CONTINUOUS MULTI-WORD STREAMING SPEECH RECOGNITION (FIX FOR CUTOFFS)
         // =========================================================================
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 
         if (SpeechRec) {
             recognition = new SpeechRec();
-            recognition.continuous = false;
-            recognition.interimResults = false;
+            recognition.continuous = true;      // CRITICAL: Keeps listening across words so "bhojpuri song" is never dropped!
+            recognition.interimResults = true;  // CRITICAL: Streams live speech tokens without waiting
             
-            // Set accent based on dropdown (default: en-IN)
             const langSelect = document.getElementById("langSelect");
             recognition.lang = langSelect.value;
             langSelect.addEventListener("change", (e) => {
                 recognition.lang = e.target.value;
-                logMessage("SYSTEM", `Speech recognition accent updated to: ${e.target.options[e.target.selectedIndex].text}`);
+                logMessage("SYSTEM", `Recognition language set to: ${e.target.options[e.target.selectedIndex].text}`);
             });
 
             recognition.onstart = () => {
                 isListening = true;
-                updateStatus("listening");
+                accumulatedSpeechText = "";
+                updateStatus("listening", "LISTENING...");
             };
 
             recognition.onresult = (e) => {
-                // Ignore any input if Jarvis is currently speaking (prevents echo loop)
                 if (isSpeaking) return;
 
-                const transcript = e.results[0][0].transcript;
-                if (!transcript || transcript.trim().length === 0) return;
+                let interimChunk = "";
+                let finalChunk = "";
 
-                logMessage("USER", transcript);
-                handleCommand(transcript);
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    if (e.results[i].isFinal) {
+                        finalChunk += e.results[i][0].transcript + " ";
+                    } else {
+                        interimChunk += e.results[i][0].transcript;
+                    }
+                }
+
+                if (finalChunk) {
+                    accumulatedSpeechText += finalChunk;
+                }
+
+                const liveSentence = (accumulatedSpeechText + " " + interimChunk).trim();
+
+                if (liveSentence) {
+                    // Update live feedback in real time so user SEES "play bhojpuri song" being heard
+                    document.getElementById("commandInput").value = liveSentence;
+                    updateStatus("listening", `"${liveSentence}"`);
+                }
+
+                // Debounce timer: wait 1.3 seconds of silence to ensure user finished speaking all words
+                clearTimeout(speechDebounceTimer);
+                speechDebounceTimer = setTimeout(() => {
+                    const finalCommand = (accumulatedSpeechText + " " + interimChunk).trim();
+                    accumulatedSpeechText = "";
+                    clearTimeout(speechDebounceTimer);
+
+                    if (finalCommand && finalCommand.length > 0) {
+                        try { recognition.stop(); } catch(err) {}
+                        isListening = false;
+                        logMessage("USER", finalCommand);
+                        handleCommand(finalCommand);
+                    }
+                }, 1300);
             };
 
             recognition.onerror = (e) => {
                 console.warn("Speech error:", e.error);
-                isListening = false;
-                if (!isSpeaking) updateStatus("idle");
+                if (e.error !== "no-speech") {
+                    isListening = false;
+                    if (!isSpeaking) updateStatus("idle");
+                }
             };
 
             recognition.onend = () => {
@@ -819,16 +857,26 @@
 
         function toggleMic() {
             if (!recognition) {
-                alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari, or use the text input below.");
+                alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari, or type below.");
                 return;
             }
             if (isListening) {
-                recognition.stop();
+                clearTimeout(speechDebounceTimer);
+                const currentText = document.getElementById("commandInput").value.trim();
+                try { recognition.stop(); } catch(e){}
+                isListening = false;
+                if (currentText) {
+                    logMessage("USER", currentText);
+                    handleCommand(currentText);
+                } else {
+                    updateStatus("idle");
+                }
             } else {
                 try {
-                    // Make sure any speaking stops when user presses mic
                     synth.cancel();
                     isSpeaking = false;
+                    accumulatedSpeechText = "";
+                    document.getElementById("commandInput").value = "";
                     recognition.start();
                 } catch (e) {
                     try { recognition.abort(); } catch(err){}
@@ -839,6 +887,7 @@
 
         // Text input submit
         function submitText() {
+            clearTimeout(speechDebounceTimer);
             const input = document.getElementById("commandInput");
             const query = input.value.trim();
             if (query) {
@@ -868,37 +917,39 @@
         // =========================================================================
         async function handleCommand(rawQuery) {
             updateStatus("processing");
-            // Normalize: remove punctuation, lowercase, extra spaces
+            // Clean: lowercase, remove punctuation
             const clean = rawQuery.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
             let reply = "";
 
-            // 1. GOOGLE SEARCH OR OPEN GOOGLE
-            if (clean.includes("google")) {
+            // 1. PLAY MUSIC / YOUTUBE SONGS (e.g. "play bhojpuri song", "play arijit singh", "play music")
+            if (clean.startsWith("play ") || clean.includes("play ") || clean.includes("song") || clean.includes("songs") || clean.includes("gana") || clean.includes("music") || clean.includes("track")) {
+                let song = clean.replace(/^(please\s+)?(play\s+)?(some\s+)?(the\s+)?/, "").trim();
+                song = song.replace(/\s+on youtube$/, "").trim();
+                
+                // If user just said "play" or "music" with no specific title
+                if (!song || song === "play" || song === "music" || song === "song" || song === "songs") {
+                    song = "bhojpuri hit songs";
+                }
+
+                openTargetUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(song)}`, 
+                              `Song: "${song}"`, `Playing ${song} on YouTube for you, Boss.`);
+                return;
+            }
+
+            // 2. OPEN YOUTUBE (Direct site navigation)
+            else if (clean.includes("youtube")) {
+                openTargetUrl("https://www.youtube.com", "YouTube", "Opening YouTube for you now, Boss.");
+                return;
+            }
+
+            // 3. GOOGLE SEARCH OR OPEN GOOGLE
+            else if (clean.includes("google")) {
                 if (clean.startsWith("search") || clean.includes("search google for") || clean.includes("search for")) {
                     const query = clean.replace(/^(search|search google for|search for|google)\s+/, "").trim();
                     openTargetUrl(`https://www.google.com/search?q=${encodeURIComponent(query)}`, `Google: "${query}"`, `Searching Google for ${query}.`);
                 } else {
                     openTargetUrl("https://www.google.com", "Google", "Opening Google for you now, Boss.");
                 }
-                return;
-            }
-
-            // 2. YOUTUBE (OPEN OR PLAY)
-            else if (clean.includes("youtube")) {
-                if (clean.includes("play") || clean.includes("search")) {
-                    const song = clean.replace(/^(play|search|play song|play music)\s+/, "").replace(/on youtube/g, "").trim();
-                    openTargetUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(song || "music")}`, `YouTube: "${song}"`, `Playing ${song || "music"} on YouTube.`);
-                } else {
-                    openTargetUrl("https://www.youtube.com", "YouTube", "Opening YouTube for you now, Boss.");
-                }
-                return;
-            }
-
-            // 3. PLAY MUSIC (WITHOUT SAYING YOUTUBE)
-            else if (clean.startsWith("play ") || clean === "play music" || clean === "play song") {
-                const song = clean.replace(/^(play music|play song|play)\s+/, "").trim();
-                const targetSong = song.length > 0 ? song : "Iron Man AC/DC";
-                openTargetUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(targetSong)}`, `Song: ${targetSong}`, `Playing ${targetSong} on YouTube.`);
                 return;
             }
 
@@ -1072,9 +1123,9 @@
                 } else if (clean.includes("thank you") || clean.includes("thanks")) {
                     reply = "You are most welcome, Boss. Anything else you need?";
                 } else if (clean.includes("what can you do") || clean.includes("help")) {
-                    reply = "I can open Google and YouTube, play music, tell time and weather, calculate numbers, answer Wikipedia queries, and manage your to-dos!";
+                    reply = "I can play any song on YouTube, open Google, tell time and weather, calculate numbers, answer Wikipedia queries, and manage your to-dos!";
                 } else {
-                    // Try Wikipedia fallback first before giving general message
+                    // Try Wikipedia fallback
                     try {
                         const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`);
                         if (wikiRes.ok) {
@@ -1086,7 +1137,7 @@
                     } catch(e) {}
 
                     if (!reply) {
-                        reply = `I heard: "${rawQuery}". Say "Open Google", "Open YouTube", "Weather", "Play Music", or ask any question.`;
+                        reply = `I heard: "${rawQuery}". Say "Play Bhojpuri song", "Open Google", "Weather", or ask any question.`;
                     }
                 }
             }
