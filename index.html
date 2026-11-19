@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. - Web AI Assistant</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>J.A.R.V.I.S. - Web AI Assistant v2.7</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -70,6 +73,7 @@
             border: 1px solid var(--cyan);
             border-radius: 4px;
             color: var(--cyan);
+            letter-spacing: 1px;
         }
 
         .header-meta {
@@ -274,22 +278,24 @@
 
         .action-link {
             display: inline-block;
-            margin-top: 5px;
-            padding: 4px 10px;
-            background: rgba(0, 240, 255, 0.15);
+            margin-top: 6px;
+            padding: 6px 14px;
+            background: rgba(0, 240, 255, 0.2);
             border: 1px solid var(--cyan);
-            border-radius: 4px;
+            border-radius: 6px;
             color: var(--cyan);
             text-decoration: none;
+            font-family: 'Orbitron', sans-serif;
             font-weight: bold;
             font-size: 0.85rem;
+            letter-spacing: 1px;
             transition: all 0.2s;
         }
 
         .action-link:hover {
             background: var(--cyan);
             color: #060911;
-            box-shadow: 0 0 10px var(--cyan);
+            box-shadow: 0 0 15px var(--cyan);
         }
 
         /* Input Bar */
@@ -414,7 +420,7 @@
     <header>
         <div class="logo">
             J.A.R.V.I.S.
-            <span class="badge-core">ONLINE v2.6</span>
+            <span class="badge-core">ONLINE v2.7 [ACTIVE]</span>
         </div>
         <div class="header-meta">
             <label for="langSelect" style="color: var(--text-dim); font-size: 0.8rem;">Accent:</label>
@@ -453,18 +459,18 @@
 
             <div id="terminalLogs" class="terminal-logs">
                 <div class="log-line">
-                    <span class="log-sender-sys">[SYSTEM]:</span> J.A.R.V.I.S. Core Online.
+                    <span class="log-sender-sys">[SYSTEM]:</span> J.A.R.V.I.S. Core v2.7 Online & Ready.
                 </div>
                 <div class="log-line">
-                    <span class="log-sender-sys">[SYSTEM]:</span> Try saying: "Open YouTube", "Who is Elon Musk", "What is the time", "Weather in Delhi", "Tell me a joke", or "Play music".
+                    <span class="log-sender-sys">[SYSTEM]:</span> Try saying: "Open Google", "Open YouTube", "Weather", "Who is Elon Musk", "Calculate 45 times 2", or "Tell me a joke".
                 </div>
                 <div class="log-line">
-                    <span class="log-sender-jarvis">[JARVIS]:</span> All systems operational, Boss. Tap the microphone or type below, and I will assist you immediately.
+                    <span class="log-sender-jarvis">[JARVIS]:</span> All systems operational, Boss. Say "Open Google" or tap the microphone, and I will assist you immediately.
                 </div>
             </div>
 
             <div class="input-bar">
-                <input type="text" id="commandInput" placeholder="Type a command or ask any question (e.g. 'open youtube', 'who is einstein')...">
+                <input type="text" id="commandInput" placeholder="Type a command (e.g. 'open google', 'open youtube', 'weather')...">
                 <button id="sendBtn">SEND ➤</button>
             </div>
         </section>
@@ -499,7 +505,7 @@
                 </div>
                 <div id="todoList" style="font-size: 0.9rem; line-height: 1.8;">
                     <div>• Test voice commands with microphone</div>
-                    <div>• Say "Open YouTube" to test launcher</div>
+                    <div>• Try saying "Open Google" or "Open YouTube"</div>
                 </div>
             </div>
 
@@ -539,7 +545,7 @@
             city: "Delhi",
             todos: [
                 "Test voice recognition",
-                "Try saying 'open youtube'"
+                "Try saying 'open google'"
             ],
             devices: {
                 light: false,
@@ -853,7 +859,7 @@
                 win = window.open(url, "_blank");
             } catch(e) {}
 
-            logMessage("JARVIS", replySpeech, { url: url, title: `Open ${title}` });
+            logMessage("JARVIS", replySpeech, { url: url, title: `👉 Click to Open ${title}` });
             speak(replySpeech);
         }
 
@@ -862,98 +868,100 @@
         // =========================================================================
         async function handleCommand(rawQuery) {
             updateStatus("processing");
-            const q = rawQuery.toLowerCase().trim();
+            // Normalize: remove punctuation, lowercase, extra spaces
+            const clean = rawQuery.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
             let reply = "";
 
-            // 1. OPEN YOUTUBE
-            if (q === "open youtube" || q === "youtube" || q.includes("open youtube") || q.includes("launch youtube")) {
-                openTargetUrl("https://www.youtube.com", "YouTube", "Opening YouTube for you now, Boss.");
+            // 1. GOOGLE SEARCH OR OPEN GOOGLE
+            if (clean.includes("google")) {
+                if (clean.startsWith("search") || clean.includes("search google for") || clean.includes("search for")) {
+                    const query = clean.replace(/^(search|search google for|search for|google)\s+/, "").trim();
+                    openTargetUrl(`https://www.google.com/search?q=${encodeURIComponent(query)}`, `Google: "${query}"`, `Searching Google for ${query}.`);
+                } else {
+                    openTargetUrl("https://www.google.com", "Google", "Opening Google for you now, Boss.");
+                }
                 return;
             }
 
-            // 2. OPEN GOOGLE
-            else if (q === "open google" || q === "google" || q.includes("open google") || q.includes("launch google")) {
-                openTargetUrl("https://www.google.com", "Google", "Opening Google.");
+            // 2. YOUTUBE (OPEN OR PLAY)
+            else if (clean.includes("youtube")) {
+                if (clean.includes("play") || clean.includes("search")) {
+                    const song = clean.replace(/^(play|search|play song|play music)\s+/, "").replace(/on youtube/g, "").trim();
+                    openTargetUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(song || "music")}`, `YouTube: "${song}"`, `Playing ${song || "music"} on YouTube.`);
+                } else {
+                    openTargetUrl("https://www.youtube.com", "YouTube", "Opening YouTube for you now, Boss.");
+                }
                 return;
             }
 
-            // 3. OPEN WHATSAPP
-            else if (q.includes("open whatsapp") || q === "whatsapp") {
+            // 3. PLAY MUSIC (WITHOUT SAYING YOUTUBE)
+            else if (clean.startsWith("play ") || clean === "play music" || clean === "play song") {
+                const song = clean.replace(/^(play music|play song|play)\s+/, "").trim();
+                const targetSong = song.length > 0 ? song : "Iron Man AC/DC";
+                openTargetUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(targetSong)}`, `Song: ${targetSong}`, `Playing ${targetSong} on YouTube.`);
+                return;
+            }
+
+            // 4. OPEN WHATSAPP
+            else if (clean.includes("whatsapp")) {
                 openTargetUrl("https://web.whatsapp.com", "WhatsApp Web", "Opening WhatsApp Web.");
                 return;
             }
 
-            // 4. OPEN GMAIL
-            else if (q.includes("open gmail") || q.includes("open mail") || q === "gmail") {
+            // 5. OPEN GMAIL
+            else if (clean.includes("gmail") || clean.includes("open mail") || clean.includes("open email")) {
                 openTargetUrl("https://mail.google.com", "Gmail", "Opening your Gmail inbox.");
                 return;
             }
 
-            // 5. OPEN GITHUB
-            else if (q.includes("open github") || q === "github") {
-                openTargetUrl("https://github.com", "GitHub", "Launching GitHub.");
+            // 6. OPEN GITHUB
+            else if (clean.includes("github")) {
+                openTargetUrl("https://github.com", "GitHub", "Opening GitHub.");
                 return;
             }
 
-            // 6. OPEN CHATGPT
-            else if (q.includes("open chatgpt") || q.includes("open chat gpt") || q.includes("open ai")) {
+            // 7. OPEN CHATGPT
+            else if (clean.includes("chatgpt") || clean.includes("chat gpt") || clean.includes("open ai")) {
                 openTargetUrl("https://chat.openai.com", "ChatGPT", "Opening ChatGPT.");
                 return;
             }
 
-            // 7. OPEN INSTAGRAM
-            else if (q.includes("open instagram") || q === "instagram") {
+            // 8. OPEN INSTAGRAM
+            else if (clean.includes("instagram")) {
                 openTargetUrl("https://www.instagram.com", "Instagram", "Opening Instagram.");
                 return;
             }
 
-            // 8. GENERIC OPEN WEBSITE / APP
-            else if (q.startsWith("open ") || q.startsWith("launch ")) {
-                const target = q.replace(/^(open|launch)\s+/, "").trim();
+            // 9. GENERIC "OPEN [WEBSITE]"
+            else if (clean.startsWith("open ") || clean.startsWith("launch ")) {
+                const target = clean.replace(/^(open|launch)\s+/, "").trim();
                 const domain = target.replace(/\s+/g, "");
-                openTargetUrl(`https://www.${domain}.com`, target, `Opening ${target}.`);
+                openTargetUrl(`https://www.${domain}.com`, target.toUpperCase(), `Opening ${target}.`);
                 return;
             }
 
-            // 9. PLAY MUSIC / YOUTUBE SEARCH
-            else if (q.includes("play music") || q.startsWith("play ")) {
-                const song = q.replace(/^(play music|play song|play)\s+/, "").replace(/\s+on youtube$/, "").trim();
-                const searchTarget = song.length > 0 ? song : "Iron Man AC/DC";
-                openTargetUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(searchTarget)}`, 
-                              `Song: ${searchTarget}`, `Playing ${searchTarget} on YouTube.`);
-                return;
-            }
-
-            // 10. GOOGLE SEARCH
-            else if (q.startsWith("search google for ") || q.startsWith("google ") || q.startsWith("search for ")) {
-                const query = q.replace(/^(search google for|google|search for)\s+/, "").trim();
-                openTargetUrl(`https://www.google.com/search?q=${encodeURIComponent(query)}`, 
-                              `Search: ${query}`, `Searching Google for ${query}.`);
-                return;
-            }
-
-            // 11. TIME & DATE
-            else if (q.includes("time") || q.includes("what time")) {
+            // 10. TIME & DATE
+            else if (clean.includes("time") || clean.includes("what time")) {
                 const now = new Date();
                 reply = `The current time is ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`;
-            } else if (q.includes("date") || q.includes("today")) {
+            } else if (clean.includes("date") || clean.includes("today")) {
                 const now = new Date();
                 reply = `Today is ${now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}.`;
             }
 
-            // 12. DAILY BRIEFING
-            else if (q.includes("briefing") || q.includes("daily update")) {
+            // 11. DAILY BRIEFING
+            else if (clean.includes("briefing") || clean.includes("daily update")) {
                 const now = new Date();
                 const h = now.getHours();
                 const greeting = h < 12 ? "Good morning" : (h < 18 ? "Good afternoon" : "Good evening");
                 reply = `${greeting}, ${memory.userName}! All browser systems and smart home hubs are online. You have ${memory.todos.length} active tasks today.`;
             }
 
-            // 13. WEATHER
-            else if (q.includes("weather") || q.includes("temperature")) {
+            // 12. WEATHER
+            else if (clean.includes("weather") || clean.includes("temperature")) {
                 try {
                     let targetCity = "";
-                    const cityMatch = q.match(/weather\s+(?:in|of|at)?\s*([a-zA-Z\s]+)/);
+                    const cityMatch = clean.match(/weather\s+(?:in|of|at)?\s*([a-z\s]+)/);
                     if (cityMatch && cityMatch[1] && !["today", "now", ""].includes(cityMatch[1].trim())) {
                         targetCity = cityMatch[1].trim();
                     }
@@ -972,24 +980,27 @@
                 }
             }
 
-            // 14. SMART HOME CONTROL
-            else if (q.includes("light") || q.includes("lights")) {
-                const newState = q.includes("off") ? false : (q.includes("on") ? true : !memory.devices.light);
+            // 13. SMART HOME CONTROL
+            else if (clean.includes("light") || clean.includes("lights")) {
+                const newState = clean.includes("off") ? false : (clean.includes("on") ? true : !memory.devices.light);
                 toggleDevice("light", newState);
                 reply = `Living room lights have been turned ${newState ? "ON" : "OFF"}.`;
-            } else if (q.includes("ac") || q.includes("air conditioner")) {
-                const newState = q.includes("off") ? false : (q.includes("on") ? true : !memory.devices.ac);
+            } else if (clean.includes("ac") || clean.includes("air conditioner")) {
+                const newState = clean.includes("off") ? false : (clean.includes("on") ? true : !memory.devices.ac);
                 toggleDevice("ac", newState);
                 reply = `Air conditioning has been switched ${newState ? "ON" : "OFF"}.`;
-            } else if (q.includes("door") || q.includes("lock")) {
-                const newState = q.includes("unlock") ? false : (q.includes("lock") ? true : !memory.devices.door);
+            } else if (clean.includes("door") || clean.includes("lock")) {
+                const newState = clean.includes("unlock") ? false : (clean.includes("lock") ? true : !memory.devices.door);
                 toggleDevice("door", newState);
                 reply = `Main door has been ${newState ? "LOCKED" : "UNLOCKED"}.`;
             }
 
-            // 15. MATH EVALUATOR
-            else if (q.includes("calculate") || q.includes("what is") && /\d+[\+\-\*\/]/.test(q)) {
-                const mathExpr = q.replace(/^(calculate|what is)\s+/, "").replace(/[^0-9\+\-\*\/\.\(\)\s]/g, "");
+            // 14. MATH EVALUATOR
+            else if (clean.includes("calculate") || (clean.includes("what is") && /\d+\s*[\+\-\*\/]/.test(clean))) {
+                const mathExpr = clean.replace(/^(calculate|what is)\s+/, "")
+                                      .replace(/times/g, "*").replace(/multiplied by/g, "*")
+                                      .replace(/divided by/g, "/").replace(/plus/g, "+").replace(/minus/g, "-")
+                                      .replace(/[^0-9\+\-\*\/\.\(\)\s]/g, "");
                 try {
                     const result = Function(`'use strict'; return (${mathExpr})`)();
                     reply = `The calculated result is ${result}.`;
@@ -998,8 +1009,8 @@
                 }
             }
 
-            // 16. JOKES
-            else if (q.includes("joke") || q.includes("make me laugh")) {
+            // 15. JOKES
+            else if (clean.includes("joke") || clean.includes("make me laugh")) {
                 const jokes = [
                     "Why do programmers prefer dark mode? Because light attracts bugs!",
                     "There are 10 types of people in the world: those who understand binary, and those who don't.",
@@ -1009,35 +1020,34 @@
                 reply = jokes[Math.floor(Math.random() * jokes.length)];
             }
 
-            // 17. PRODUCTIVITY (TODOS)
-            else if (q.startsWith("add to-do") || q.startsWith("add task") || q.startsWith("todo ")) {
-                const task = q.replace(/^(add to-do|add task|todo)\s+/, "").trim();
+            // 16. PRODUCTIVITY (TODOS)
+            else if (clean.startsWith("add to do") || clean.startsWith("add todo") || clean.startsWith("add task") || clean.startsWith("todo ")) {
+                const task = clean.replace(/^(add to do|add todo|add task|todo)\s+/, "").trim();
                 if (task) {
                     memory.todos.push(task);
                     renderTodos();
                     reply = `Task added to schedule: ${task}.`;
                 }
-            } else if (q.includes("clear to-do") || q.includes("clear tasks")) {
+            } else if (clean.includes("clear to do") || clean.includes("clear todo") || clean.includes("clear tasks")) {
                 memory.todos = [];
                 renderTodos();
                 reply = "Your to-do list has been cleared.";
             }
 
-            // 18. FACE SCAN
-            else if (q.includes("face") || q.includes("scan") || q.includes("biometric")) {
+            // 17. FACE SCAN
+            else if (clean.includes("face") || clean.includes("scan") || clean.includes("biometric")) {
                 startFaceScan();
                 reply = "Initiating facial biometric scan.";
             }
 
-            // 19. WIKIPEDIA KNOWLEDGE LOOKUP
-            else if (q.startsWith("who is ") || q.startsWith("what is ") || q.startsWith("tell me about ") || q.startsWith("explain ")) {
-                const cleanTerm = q.replace(/^(who is|what is|tell me about|explain)\s+/, "").replace(/\?/g, "").trim();
+            // 18. WIKIPEDIA KNOWLEDGE LOOKUP
+            else if (clean.startsWith("who is ") || clean.startsWith("what is ") || clean.startsWith("tell me about ") || clean.startsWith("explain ")) {
+                const cleanTerm = clean.replace(/^(who is|what is|tell me about|explain)\s+/, "").trim();
                 try {
                     const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanTerm)}`);
                     if (wikiRes.ok) {
                         const wikiData = await wikiRes.json();
                         if (wikiData.extract) {
-                            // Take first 2 sentences
                             const sentences = wikiData.extract.split(". ").slice(0, 2).join(". ");
                             reply = `${sentences}.`;
                         } else {
@@ -1051,22 +1061,22 @@
                 }
             }
 
-            // 20. CONVERSATIONAL DIALOGUE
+            // 19. CONVERSATIONAL DIALOGUE
             else {
-                if (q.includes("hello") || q.includes("hi") || q.includes("hey")) {
+                if (clean.includes("hello") || clean.includes("hi") || clean.includes("hey")) {
                     reply = `Greetings, ${memory.userName}! All systems are online and ready.`;
-                } else if (q.includes("how are you")) {
+                } else if (clean.includes("how are you")) {
                     reply = "I am operating at peak efficiency, Boss. How are you doing today?";
-                } else if (q.includes("who are you") || q.includes("what is your name")) {
+                } else if (clean.includes("who are you") || clean.includes("what is your name")) {
                     reply = "I am J.A.R.V.I.S., your Just A Rather Very Intelligent System.";
-                } else if (q.includes("thank you") || q.includes("thanks")) {
+                } else if (clean.includes("thank you") || clean.includes("thanks")) {
                     reply = "You are most welcome, Boss. Anything else you need?";
-                } else if (q.includes("what can you do") || q.includes("help")) {
-                    reply = "I can open YouTube and Google, play music, tell time and weather, calculate numbers, answer Wikipedia queries, and manage your to-dos!";
+                } else if (clean.includes("what can you do") || clean.includes("help")) {
+                    reply = "I can open Google and YouTube, play music, tell time and weather, calculate numbers, answer Wikipedia queries, and manage your to-dos!";
                 } else {
                     // Try Wikipedia fallback first before giving general message
                     try {
-                        const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(q)}`);
+                        const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`);
                         if (wikiRes.ok) {
                             const wikiData = await wikiRes.json();
                             if (wikiData.extract) {
@@ -1076,7 +1086,7 @@
                     } catch(e) {}
 
                     if (!reply) {
-                        reply = `I heard: "${rawQuery}". You can say "Open YouTube", "Weather", "Play Music", or ask any question.`;
+                        reply = `I heard: "${rawQuery}". Say "Open Google", "Open YouTube", "Weather", "Play Music", or ask any question.`;
                     }
                 }
             }
