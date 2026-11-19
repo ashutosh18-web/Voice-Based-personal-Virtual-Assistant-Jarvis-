@@ -10,7 +10,7 @@
     <style>
         :root {
             --bg-dark: #060911;
-            --card-bg: rgba(11, 17, 30, 0.85);
+            --card-bg: rgba(11, 17, 30, 0.88);
             --border-glow: #162b47;
             --cyan: #00f0ff;
             --electric-blue: #0077ff;
@@ -77,7 +77,20 @@
             font-size: 0.9rem;
             color: var(--text-dim);
             display: flex;
-            gap: 20px;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .lang-select {
+            background: #12213a;
+            color: var(--cyan);
+            border: 1px solid var(--border-glow);
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            outline: none;
+            cursor: pointer;
         }
 
         /* Main Container */
@@ -236,6 +249,7 @@
         .log-line {
             margin-bottom: 12px;
             animation: fadeIn 0.2s ease-in;
+            word-break: break-word;
         }
 
         @keyframes fadeIn {
@@ -256,6 +270,26 @@
         .log-sender-sys {
             color: var(--text-dim);
             font-style: italic;
+        }
+
+        .action-link {
+            display: inline-block;
+            margin-top: 5px;
+            padding: 4px 10px;
+            background: rgba(0, 240, 255, 0.15);
+            border: 1px solid var(--cyan);
+            border-radius: 4px;
+            color: var(--cyan);
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .action-link:hover {
+            background: var(--cyan);
+            color: #060911;
+            box-shadow: 0 0 10px var(--cyan);
         }
 
         /* Input Bar */
@@ -380,9 +414,15 @@
     <header>
         <div class="logo">
             J.A.R.V.I.S.
-            <span class="badge-core">ONLINE v2.5</span>
+            <span class="badge-core">ONLINE v2.6</span>
         </div>
         <div class="header-meta">
+            <label for="langSelect" style="color: var(--text-dim); font-size: 0.8rem;">Accent:</label>
+            <select id="langSelect" class="lang-select">
+                <option value="en-IN" selected>English (India)</option>
+                <option value="en-US">English (US)</option>
+                <option value="en-GB">English (UK)</option>
+            </select>
             <span id="liveClock">00:00:00</span>
             <span id="liveDate">Loading date...</span>
         </div>
@@ -413,18 +453,18 @@
 
             <div id="terminalLogs" class="terminal-logs">
                 <div class="log-line">
-                    <span class="log-sender-sys">[SYSTEM]:</span> J.A.R.V.I.S. Web Engine Initialized.
+                    <span class="log-sender-sys">[SYSTEM]:</span> J.A.R.V.I.S. Core Online.
                 </div>
                 <div class="log-line">
-                    <span class="log-sender-sys">[SYSTEM]:</span> Say "Hey Jarvis" or click "TAP TO SPEAK" to begin.
+                    <span class="log-sender-sys">[SYSTEM]:</span> Try saying: "Open YouTube", "Who is Elon Musk", "What is the time", "Weather in Delhi", "Tell me a joke", or "Play music".
                 </div>
                 <div class="log-line">
-                    <span class="log-sender-jarvis">[JARVIS]:</span> All cognitive and speech synthesis systems are operational, Boss. How may I assist you today?
+                    <span class="log-sender-jarvis">[JARVIS]:</span> All systems operational, Boss. Tap the microphone or type below, and I will assist you immediately.
                 </div>
             </div>
 
             <div class="input-bar">
-                <input type="text" id="commandInput" placeholder="Type command (e.g. 'what time is it', 'weather', 'play music')...">
+                <input type="text" id="commandInput" placeholder="Type a command or ask any question (e.g. 'open youtube', 'who is einstein')...">
                 <button id="sendBtn">SEND ➤</button>
             </div>
         </section>
@@ -459,18 +499,20 @@
                 </div>
                 <div id="todoList" style="font-size: 0.9rem; line-height: 1.8;">
                     <div>• Test voice commands with microphone</div>
-                    <div>• Check live weather forecast</div>
+                    <div>• Say "Open YouTube" to test launcher</div>
                 </div>
             </div>
 
             <!-- Notes & Memory -->
             <div class="widget-card">
                 <div class="widget-title">
-                    <span>🧠 PERSISTENT MEMORY</span>
+                    <span>🧠 SYSTEM CAPABILITIES</span>
                     <span style="font-size: 0.75rem; color: var(--cyan);">Active</span>
                 </div>
                 <p id="memoryPreview" style="font-size: 0.88rem; color: var(--text-dim); line-height: 1.5;">
-                    User: Boss | Assistant: Jarvis | Location: Auto | Memory Buffer: Ready to remember user facts.
+                    • App Launcher: YouTube, Google, WhatsApp, GitHub, Gmail<br>
+                    • Knowledge: Wikipedia Answers & Math Calculator<br>
+                    • Audio Echo Protection: Active
                 </p>
             </div>
         </section>
@@ -494,23 +536,23 @@
         // =========================================================================
         const memory = {
             userName: "Boss",
-            city: "London",
+            city: "Delhi",
             todos: [
                 "Test voice recognition",
-                "Try saying 'give me daily briefing'"
+                "Try saying 'open youtube'"
             ],
             devices: {
                 light: false,
                 ac: true,
                 door: true
-            },
-            facts: {}
+            }
         };
 
         let currentState = "idle"; // 'idle' | 'listening' | 'processing' | 'speaking'
         let synth = window.speechSynthesis;
         let recognition = null;
         let isListening = false;
+        let isSpeaking = false; // CRITICAL FLAG: Blocks microphone feedback loop
 
         // =========================================================================
         //                          ARC-REACTOR ANIMATION
@@ -653,7 +695,7 @@
             }
         }
 
-        function logMessage(sender, text) {
+        function logMessage(sender, text, actionLink = null) {
             const logs = document.getElementById("terminalLogs");
             const div = document.createElement("div");
             div.className = "log-line";
@@ -662,27 +704,49 @@
             if (sender.toLowerCase() === "jarvis") senderClass = "log-sender-jarvis";
             if (sender.toLowerCase() === "user") senderClass = "log-sender-user";
 
-            div.innerHTML = `<span class="${senderClass}">[${sender.toUpperCase()}]:</span> ${text}`;
+            let htmlContent = `<span class="${senderClass}">[${sender.toUpperCase()}]:</span> ${text}`;
+            if (actionLink) {
+                htmlContent += `<br><a href="${actionLink.url}" target="_blank" class="action-link">${actionLink.title} ↗</a>`;
+            }
+
+            div.innerHTML = htmlContent;
             logs.appendChild(div);
             logs.scrollTop = logs.scrollHeight;
         }
 
+        // =========================================================================
+        //               SPEECH SYNTHESIS WITH ECHO SUPPRESSION
+        // =========================================================================
         function speak(text) {
             if (!synth) return;
             synth.cancel(); // Stop any pending speech
+
+            // CRITICAL FIX: Stop microphone listening so Jarvis does not hear its own voice!
+            if (recognition && isListening) {
+                try { recognition.abort(); } catch(e){}
+                isListening = false;
+            }
+
+            isSpeaking = true;
+            updateStatus("speaking");
 
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 1.05;
             utterance.pitch = 1.0;
 
-            // Pick a good English voice
+            // Pick an English voice
             const voices = synth.getVoices();
-            const preferred = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Google") || v.name.includes("David") || v.name.includes("Mark")));
+            const preferred = voices.find(v => v.lang.includes("en") && 
+                (v.name.includes("India") || v.name.includes("Google") || v.name.includes("David") || v.name.includes("Natural")));
             if (preferred) utterance.voice = preferred;
 
-            utterance.onstart = () => updateStatus("speaking");
-            utterance.onend = () => updateStatus("idle");
-            utterance.onerror = () => updateStatus("idle");
+            const onSpeechDone = () => {
+                isSpeaking = false;
+                updateStatus("idle");
+            };
+
+            utterance.onend = onSpeechDone;
+            utterance.onerror = onSpeechDone;
 
             synth.speak(utterance);
         }
@@ -707,7 +771,14 @@
             recognition = new SpeechRec();
             recognition.continuous = false;
             recognition.interimResults = false;
-            recognition.lang = "en-US";
+            
+            // Set accent based on dropdown (default: en-IN)
+            const langSelect = document.getElementById("langSelect");
+            recognition.lang = langSelect.value;
+            langSelect.addEventListener("change", (e) => {
+                recognition.lang = e.target.value;
+                logMessage("SYSTEM", `Speech recognition accent updated to: ${e.target.options[e.target.selectedIndex].text}`);
+            });
 
             recognition.onstart = () => {
                 isListening = true;
@@ -715,20 +786,25 @@
             };
 
             recognition.onresult = (e) => {
+                // Ignore any input if Jarvis is currently speaking (prevents echo loop)
+                if (isSpeaking) return;
+
                 const transcript = e.results[0][0].transcript;
+                if (!transcript || transcript.trim().length === 0) return;
+
                 logMessage("USER", transcript);
                 handleCommand(transcript);
             };
 
             recognition.onerror = (e) => {
                 console.warn("Speech error:", e.error);
-                updateStatus("idle");
                 isListening = false;
+                if (!isSpeaking) updateStatus("idle");
             };
 
             recognition.onend = () => {
                 isListening = false;
-                if (currentState === "listening") updateStatus("idle");
+                if (!isSpeaking && currentState === "listening") updateStatus("idle");
             };
         } else {
             document.getElementById("speechSupport").innerText = "SPEECH API UNAVAILABLE (USE TYPING)";
@@ -744,9 +820,12 @@
                 recognition.stop();
             } else {
                 try {
+                    // Make sure any speaking stops when user presses mic
+                    synth.cancel();
+                    isSpeaking = false;
                     recognition.start();
                 } catch (e) {
-                    recognition.stop();
+                    try { recognition.abort(); } catch(err){}
                 }
             }
         }
@@ -767,16 +846,94 @@
             if (e.key === "Enter") submitText();
         });
 
+        // Safe URL Opener with Clickable Link fallback
+        function openTargetUrl(url, title, replySpeech) {
+            let win = null;
+            try {
+                win = window.open(url, "_blank");
+            } catch(e) {}
+
+            logMessage("JARVIS", replySpeech, { url: url, title: `Open ${title}` });
+            speak(replySpeech);
+        }
+
         // =========================================================================
-        //                          COMMAND DISPATCHER
+        //                          COMPREHENSIVE COMMAND HANDLER
         // =========================================================================
         async function handleCommand(rawQuery) {
             updateStatus("processing");
             const q = rawQuery.toLowerCase().trim();
             let reply = "";
 
-            // 1. Time & Date
-            if (q.includes("time") || q.includes("what time")) {
+            // 1. OPEN YOUTUBE
+            if (q === "open youtube" || q === "youtube" || q.includes("open youtube") || q.includes("launch youtube")) {
+                openTargetUrl("https://www.youtube.com", "YouTube", "Opening YouTube for you now, Boss.");
+                return;
+            }
+
+            // 2. OPEN GOOGLE
+            else if (q === "open google" || q === "google" || q.includes("open google") || q.includes("launch google")) {
+                openTargetUrl("https://www.google.com", "Google", "Opening Google.");
+                return;
+            }
+
+            // 3. OPEN WHATSAPP
+            else if (q.includes("open whatsapp") || q === "whatsapp") {
+                openTargetUrl("https://web.whatsapp.com", "WhatsApp Web", "Opening WhatsApp Web.");
+                return;
+            }
+
+            // 4. OPEN GMAIL
+            else if (q.includes("open gmail") || q.includes("open mail") || q === "gmail") {
+                openTargetUrl("https://mail.google.com", "Gmail", "Opening your Gmail inbox.");
+                return;
+            }
+
+            // 5. OPEN GITHUB
+            else if (q.includes("open github") || q === "github") {
+                openTargetUrl("https://github.com", "GitHub", "Launching GitHub.");
+                return;
+            }
+
+            // 6. OPEN CHATGPT
+            else if (q.includes("open chatgpt") || q.includes("open chat gpt") || q.includes("open ai")) {
+                openTargetUrl("https://chat.openai.com", "ChatGPT", "Opening ChatGPT.");
+                return;
+            }
+
+            // 7. OPEN INSTAGRAM
+            else if (q.includes("open instagram") || q === "instagram") {
+                openTargetUrl("https://www.instagram.com", "Instagram", "Opening Instagram.");
+                return;
+            }
+
+            // 8. GENERIC OPEN WEBSITE / APP
+            else if (q.startsWith("open ") || q.startsWith("launch ")) {
+                const target = q.replace(/^(open|launch)\s+/, "").trim();
+                const domain = target.replace(/\s+/g, "");
+                openTargetUrl(`https://www.${domain}.com`, target, `Opening ${target}.`);
+                return;
+            }
+
+            // 9. PLAY MUSIC / YOUTUBE SEARCH
+            else if (q.includes("play music") || q.startsWith("play ")) {
+                const song = q.replace(/^(play music|play song|play)\s+/, "").replace(/\s+on youtube$/, "").trim();
+                const searchTarget = song.length > 0 ? song : "Iron Man AC/DC";
+                openTargetUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(searchTarget)}`, 
+                              `Song: ${searchTarget}`, `Playing ${searchTarget} on YouTube.`);
+                return;
+            }
+
+            // 10. GOOGLE SEARCH
+            else if (q.startsWith("search google for ") || q.startsWith("google ") || q.startsWith("search for ")) {
+                const query = q.replace(/^(search google for|google|search for)\s+/, "").trim();
+                openTargetUrl(`https://www.google.com/search?q=${encodeURIComponent(query)}`, 
+                              `Search: ${query}`, `Searching Google for ${query}.`);
+                return;
+            }
+
+            // 11. TIME & DATE
+            else if (q.includes("time") || q.includes("what time")) {
                 const now = new Date();
                 reply = `The current time is ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`;
             } else if (q.includes("date") || q.includes("today")) {
@@ -784,68 +941,81 @@
                 reply = `Today is ${now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}.`;
             }
 
-            // 2. Daily Briefing
+            // 12. DAILY BRIEFING
             else if (q.includes("briefing") || q.includes("daily update")) {
                 const now = new Date();
                 const h = now.getHours();
                 const greeting = h < 12 ? "Good morning" : (h < 18 ? "Good afternoon" : "Good evening");
-                reply = `${greeting}, ${memory.userName}. All browser systems and smart home hubs are online. You have ${memory.todos.length} active tasks today.`;
+                reply = `${greeting}, ${memory.userName}! All browser systems and smart home hubs are online. You have ${memory.todos.length} active tasks today.`;
             }
 
-            // 3. Google Search
-            else if (q.startsWith("search google for ") || q.startsWith("google ") || q.startsWith("search for ")) {
-                const query = q.replace(/^(search google for|google|search for)\s+/, "");
-                reply = `Opening Google search for ${query}.`;
-                window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, "_blank");
-            }
-
-            // 4. Play Music
-            else if (q.includes("play music") || q.startsWith("play ")) {
-                const song = q.replace(/^(play music|play song|play)\s+/, "").replace(/\s+on youtube$/, "");
-                const searchTarget = song.length > 0 ? song : "Iron Man AC/DC";
-                reply = `Playing ${searchTarget} on YouTube.`;
-                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(searchTarget)}`, "_blank");
-            }
-
-            // 5. Live Weather
+            // 13. WEATHER
             else if (q.includes("weather") || q.includes("temperature")) {
                 try {
-                    const res = await fetch("https://wttr.in/?format=j1");
+                    let targetCity = "";
+                    const cityMatch = q.match(/weather\s+(?:in|of|at)?\s*([a-zA-Z\s]+)/);
+                    if (cityMatch && cityMatch[1] && !["today", "now", ""].includes(cityMatch[1].trim())) {
+                        targetCity = cityMatch[1].trim();
+                    }
+                    const url = targetCity ? `https://wttr.in/${encodeURIComponent(targetCity)}?format=j1` : `https://wttr.in/?format=j1`;
+                    const res = await fetch(url);
                     if (res.ok) {
                         const data = await res.json();
                         const current = data.current_condition[0];
-                        const area = data.nearest_area[0].areaName[0].value;
+                        const area = targetCity || data.nearest_area[0].areaName[0].value;
                         reply = `The weather in ${area} is currently ${current.weatherDesc[0].value} with a temperature of ${current.temp_C} degrees Celsius and humidity at ${current.humidity}%.`;
                     } else {
                         reply = "Unable to fetch live weather at this moment.";
                     }
                 } catch (e) {
-                    reply = "Weather service is currently unreachable.";
+                    reply = "Weather service is temporarily unreachable.";
                 }
             }
 
-            // 6. Smart Home Control
+            // 14. SMART HOME CONTROL
             else if (q.includes("light") || q.includes("lights")) {
-                const newState = !memory.devices.light;
+                const newState = q.includes("off") ? false : (q.includes("on") ? true : !memory.devices.light);
                 toggleDevice("light", newState);
                 reply = `Living room lights have been turned ${newState ? "ON" : "OFF"}.`;
             } else if (q.includes("ac") || q.includes("air conditioner")) {
-                const newState = !memory.devices.ac;
+                const newState = q.includes("off") ? false : (q.includes("on") ? true : !memory.devices.ac);
                 toggleDevice("ac", newState);
                 reply = `Air conditioning has been switched ${newState ? "ON" : "OFF"}.`;
             } else if (q.includes("door") || q.includes("lock")) {
-                const newState = !memory.devices.door;
+                const newState = q.includes("unlock") ? false : (q.includes("lock") ? true : !memory.devices.door);
                 toggleDevice("door", newState);
                 reply = `Main door has been ${newState ? "LOCKED" : "UNLOCKED"}.`;
             }
 
-            // 7. Productivity: Add Tasks
+            // 15. MATH EVALUATOR
+            else if (q.includes("calculate") || q.includes("what is") && /\d+[\+\-\*\/]/.test(q)) {
+                const mathExpr = q.replace(/^(calculate|what is)\s+/, "").replace(/[^0-9\+\-\*\/\.\(\)\s]/g, "");
+                try {
+                    const result = Function(`'use strict'; return (${mathExpr})`)();
+                    reply = `The calculated result is ${result}.`;
+                } catch(e) {
+                    reply = "I could not evaluate that mathematical expression.";
+                }
+            }
+
+            // 16. JOKES
+            else if (q.includes("joke") || q.includes("make me laugh")) {
+                const jokes = [
+                    "Why do programmers prefer dark mode? Because light attracts bugs!",
+                    "There are 10 types of people in the world: those who understand binary, and those who don't.",
+                    "Why did the developer go broke? Because he used up all his cache!",
+                    "An optimist says the glass is half full. A pessimist says it's half empty. A programmer says the glass is twice as large as necessary."
+                ];
+                reply = jokes[Math.floor(Math.random() * jokes.length)];
+            }
+
+            // 17. PRODUCTIVITY (TODOS)
             else if (q.startsWith("add to-do") || q.startsWith("add task") || q.startsWith("todo ")) {
                 const task = q.replace(/^(add to-do|add task|todo)\s+/, "").trim();
                 if (task) {
                     memory.todos.push(task);
                     renderTodos();
-                    reply = `Task added: ${task}.`;
+                    reply = `Task added to schedule: ${task}.`;
                 }
             } else if (q.includes("clear to-do") || q.includes("clear tasks")) {
                 memory.todos = [];
@@ -853,38 +1023,61 @@
                 reply = "Your to-do list has been cleared.";
             }
 
-            // 8. Face Scan
+            // 18. FACE SCAN
             else if (q.includes("face") || q.includes("scan") || q.includes("biometric")) {
                 startFaceScan();
                 reply = "Initiating facial biometric scan.";
             }
 
-            // 9. Wikipedia lookup
-            else if (q.includes("who is") || q.includes("what is")) {
-                const term = q.replace(/^(who is|what is|tell me about)\s+/, "").replace(/\?/, "");
+            // 19. WIKIPEDIA KNOWLEDGE LOOKUP
+            else if (q.startsWith("who is ") || q.startsWith("what is ") || q.startsWith("tell me about ") || q.startsWith("explain ")) {
+                const cleanTerm = q.replace(/^(who is|what is|tell me about|explain)\s+/, "").replace(/\?/g, "").trim();
                 try {
-                    const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(term)}`);
+                    const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanTerm)}`);
                     if (wikiRes.ok) {
                         const wikiData = await wikiRes.json();
-                        reply = wikiData.extract ? wikiData.extract.split(". ").slice(0, 2).join(". ") + "." : `I found information on ${term} on Wikipedia.`;
+                        if (wikiData.extract) {
+                            // Take first 2 sentences
+                            const sentences = wikiData.extract.split(". ").slice(0, 2).join(". ");
+                            reply = `${sentences}.`;
+                        } else {
+                            reply = `Here is what I found on Wikipedia about ${cleanTerm}.`;
+                        }
                     } else {
-                        reply = `I could not find an immediate Wikipedia summary for ${term}.`;
+                        reply = `I could not find a specific Wikipedia page for ${cleanTerm}.`;
                     }
-                } catch (e) {
-                    reply = `Processed query: ${term}.`;
+                } catch(e) {
+                    reply = `Processed inquiry on ${cleanTerm}.`;
                 }
             }
 
-            // 10. General Conversational Fallback
+            // 20. CONVERSATIONAL DIALOGUE
             else {
                 if (q.includes("hello") || q.includes("hi") || q.includes("hey")) {
-                    reply = `Greetings, ${memory.userName}. All systems are standing by for your command.`;
+                    reply = `Greetings, ${memory.userName}! All systems are online and ready.`;
                 } else if (q.includes("how are you")) {
-                    reply = "I am operating at 100% capacity and ready to assist you, Boss.";
-                } else if (q.includes("who are you")) {
+                    reply = "I am operating at peak efficiency, Boss. How are you doing today?";
+                } else if (q.includes("who are you") || q.includes("what is your name")) {
                     reply = "I am J.A.R.V.I.S., your Just A Rather Very Intelligent System.";
+                } else if (q.includes("thank you") || q.includes("thanks")) {
+                    reply = "You are most welcome, Boss. Anything else you need?";
+                } else if (q.includes("what can you do") || q.includes("help")) {
+                    reply = "I can open YouTube and Google, play music, tell time and weather, calculate numbers, answer Wikipedia queries, and manage your to-dos!";
                 } else {
-                    reply = `I have received your instruction: "${rawQuery}". How else may I assist you?`;
+                    // Try Wikipedia fallback first before giving general message
+                    try {
+                        const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(q)}`);
+                        if (wikiRes.ok) {
+                            const wikiData = await wikiRes.json();
+                            if (wikiData.extract) {
+                                reply = wikiData.extract.split(". ").slice(0, 2).join(". ") + ".";
+                            }
+                        }
+                    } catch(e) {}
+
+                    if (!reply) {
+                        reply = `I heard: "${rawQuery}". You can say "Open YouTube", "Weather", "Play Music", or ask any question.`;
+                    }
                 }
             }
 
