@@ -73,9 +73,9 @@ os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
 
 # Default Memory Schema
 DEFAULT_MEMORY = {
-    "user_name": "Boss",
+    "user_name": "Ashutosh",
     "assistant_name": "Jarvis",
-    "city": "London",
+    "city": "Delhi",
     "voice_rate": 175,
     "gemini_api_key": "",
     "wake_word_enabled": True,
@@ -818,7 +818,18 @@ class JarvisBrain:
             else:
                 reply = self.get_weather()
 
-        # 7. USER PREFERENCES & MEMORY
+        # 7. USER PREFERENCES, MEMORY & BOSS IDENTITY
+        elif any(phrase in q for phrase in ["who is your boss", "who is you boss", "who is the boss", "who is your master", "who is your creator", "who is your owner"]):
+            user_name = self.memory.get("user_name", "Ashutosh")
+            reply = f"My boss, creator, and master is {user_name}! I am programmed to obey your every command, Boss."
+            self.voice.speak(reply)
+        elif any(phrase in q for phrase in ["who created you", "who made you", "who developed you", "who built you", "who programmed you"]):
+            user_name = self.memory.get("user_name", "Ashutosh")
+            reply = f"I was built, coded, and brought to life by my boss, {user_name}, as an advanced AI desktop assistant project!"
+            self.voice.speak(reply)
+        elif "who is ashutosh" in q:
+            reply = "Ashutosh is my creator, developer, and boss. Everything in this system was built under his direction."
+            self.voice.speak(reply)
         elif q.startswith("remember that ") or q.startswith("remember "):
             reply = self.remember_fact(q)
         elif "what do you remember" in q or "recall memory" in q or "show facts" in q:

@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>J.A.R.V.I.S. - Web AI Assistant v2.8</title>
+    <title>J.A.R.V.I.S. - Created by Ashutosh (v3.0)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -43,27 +43,29 @@
                 linear-gradient(to bottom, #060911, #080f1d);
         }
 
-        /* Top Header */
+        /* Top Header - Fully Responsive */
         header {
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 30px;
-            background: rgba(13, 21, 39, 0.9);
+            padding: 12px 20px;
+            background: rgba(13, 21, 39, 0.95);
             border-bottom: 1px solid var(--border-glow);
             backdrop-filter: blur(10px);
+            gap: 10px;
         }
 
         .logo {
             font-family: 'Orbitron', sans-serif;
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             font-weight: 900;
             color: var(--cyan);
-            letter-spacing: 3px;
+            letter-spacing: 2px;
             text-shadow: 0 0 12px rgba(0, 240, 255, 0.6);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .badge-core {
@@ -78,11 +80,32 @@
 
         .header-meta {
             font-family: 'Share Tech Mono', monospace;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--text-dim);
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
-            gap: 15px;
+            gap: 10px;
+        }
+
+        .boss-badge-global {
+            background: rgba(0, 240, 255, 0.18);
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+        }
+
+        .boss-badge-global:hover {
+            background: var(--cyan);
+            color: #060911;
         }
 
         .lang-select {
@@ -90,28 +113,31 @@
             color: var(--cyan);
             border: 1px solid var(--border-glow);
             border-radius: 4px;
-            padding: 3px 8px;
+            padding: 3px 6px;
             font-family: 'Share Tech Mono', monospace;
             font-size: 0.8rem;
             outline: none;
             cursor: pointer;
         }
 
-        /* Main Container */
+        /* Main Container - Responsive Grid */
         main {
             display: grid;
-            grid-template-columns: 420px 1fr;
+            grid-template-columns: 380px 1fr;
             gap: 20px;
-            padding: 20px 30px;
+            padding: 15px 20px;
             flex: 1;
             max-width: 1400px;
             margin: 0 auto;
             width: 100%;
         }
 
-        @media (max-width: 900px) {
+        /* Adapt for all other screen sizes (Tablets and Mobiles) */
+        @media (max-width: 950px) {
             main {
                 grid-template-columns: 1fr;
+                padding: 12px;
+                gap: 15px;
             }
         }
 
@@ -120,7 +146,7 @@
             background: var(--card-bg);
             border: 1px solid var(--border-glow);
             border-radius: 12px;
-            padding: 20px;
+            padding: 18px;
             backdrop-filter: blur(8px);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
             display: flex;
@@ -134,18 +160,22 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
         }
 
         #reactorCanvas {
-            width: 320px;
-            height: 320px;
+            max-width: 320px;
+            max-height: 320px;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1 / 1;
         }
 
         .status-pill {
             font-family: 'Orbitron', sans-serif;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 700;
-            padding: 6px 18px;
+            padding: 6px 16px;
             border-radius: 20px;
             margin-top: 10px;
             letter-spacing: 1.5px;
@@ -154,26 +184,27 @@
             border: 1px solid var(--cyan);
             text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
             transition: all 0.3s ease;
-            max-width: 90%;
+            max-width: 95%;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            text-align: center;
         }
 
         /* Control Buttons */
         .controls-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 20px;
+            gap: 8px;
+            margin-top: 15px;
             width: 100%;
         }
 
         button {
             font-family: 'Orbitron', sans-serif;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 700;
-            padding: 12px;
+            padding: 10px;
             border-radius: 6px;
             cursor: pointer;
             border: 1px solid var(--border-glow);
@@ -184,21 +215,22 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         button:hover {
             background: var(--cyan);
             color: #060911;
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.5);
         }
 
         button.primary-btn {
             background: var(--cyan);
             color: #060911;
             grid-column: span 2;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             border: none;
+            padding: 12px;
         }
 
         button.primary-btn:hover {
@@ -221,29 +253,29 @@
         .terminal-container {
             display: flex;
             flex-direction: column;
-            height: 100%;
+            min-height: 480px;
         }
 
         .terminal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 12px;
+            padding-bottom: 10px;
             border-bottom: 1px solid var(--border-glow);
             font-family: 'Share Tech Mono', monospace;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: var(--text-dim);
         }
 
         .terminal-logs {
             flex: 1;
             overflow-y: auto;
-            margin: 15px 0;
-            padding-right: 8px;
+            margin: 12px 0;
+            padding-right: 6px;
             font-family: 'Share Tech Mono', monospace;
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             line-height: 1.6;
-            max-height: 440px;
+            max-height: 380px;
         }
 
         .terminal-logs::-webkit-scrollbar {
@@ -255,7 +287,7 @@
         }
 
         .log-line {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             animation: fadeIn 0.2s ease-in;
             word-break: break-word;
         }
@@ -291,7 +323,7 @@
             text-decoration: none;
             font-family: 'Orbitron', sans-serif;
             font-weight: bold;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             letter-spacing: 1px;
             transition: all 0.2s;
         }
@@ -305,7 +337,7 @@
         /* Input Bar */
         .input-bar {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             margin-top: auto;
         }
 
@@ -314,10 +346,10 @@
             background: #0b111e;
             border: 1px solid var(--border-glow);
             border-radius: 6px;
-            padding: 12px 16px;
+            padding: 10px 14px;
             color: var(--cyan);
             font-family: 'Share Tech Mono', monospace;
-            font-size: 1rem;
+            font-size: 0.95rem;
             outline: none;
             transition: border 0.3s;
         }
@@ -327,16 +359,16 @@
             box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
         }
 
-        /* Quick Widgets Panel */
+        /* Quick Widgets Section */
         .widgets-section {
             grid-column: span 2;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 15px;
-            margin-top: 10px;
+            margin-top: 5px;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 950px) {
             .widgets-section {
                 grid-column: span 1;
             }
@@ -378,21 +410,72 @@
         .badge-on { background: rgba(0, 255, 102, 0.2); color: var(--neon-green); border: 1px solid var(--neon-green); }
         .badge-off { background: rgba(255, 51, 102, 0.2); color: var(--neon-red); border: 1px solid var(--neon-red); }
 
-        /* Camera Modal */
-        #cameraModal {
+        /* Modals */
+        .modal-overlay {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 999;
+            background: rgba(6, 9, 17, 0.9);
+            z-index: 1000;
             align-items: center;
             justify-content: center;
-            flex-direction: column;
+            backdrop-filter: blur(10px);
+            padding: 15px;
+        }
+
+        .modal-card {
+            background: #0b111e;
+            border: 2px solid var(--cyan);
+            border-radius: 12px;
+            padding: 20px 25px;
+            width: 440px;
+            max-width: 100%;
+            box-shadow: 0 0 35px rgba(0, 240, 255, 0.4);
+        }
+
+        .modal-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            color: var(--cyan);
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            background: #12213a;
+            border: 1px solid var(--border-glow);
+            color: var(--cyan);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.95rem;
+            padding: 9px 12px;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
         }
 
         #webcamVideo {
-            width: 480px;
-            height: 360px;
+            width: 100%;
+            max-width: 460px;
+            height: auto;
+            aspect-ratio: 4 / 3;
             border: 2px solid var(--cyan);
             border-radius: 10px;
             box-shadow: 0 0 30px rgba(0, 240, 255, 0.6);
@@ -401,6 +484,7 @@
 
         .scan-overlay {
             position: relative;
+            max-width: 100%;
         }
 
         .scan-line {
@@ -424,17 +508,19 @@
     <header>
         <div class="logo">
             J.A.R.V.I.S.
-            <span class="badge-core">ONLINE v2.8 [ACTIVE]</span>
+            <span class="badge-core">v3.0 [ALL-SCREEN ACTIVE]</span>
         </div>
         <div class="header-meta">
-            <label for="langSelect" style="color: var(--text-dim); font-size: 0.8rem;">Language/Accent:</label>
+            <button id="bossPillBtn" class="boss-badge-global" title="Click to view creator and visitor details">
+                👑 BOSS: ASHUTOSH
+            </button>
+            <label for="langSelect" style="color: var(--text-dim); font-size: 0.8rem;">Accent:</label>
             <select id="langSelect" class="lang-select">
                 <option value="en-IN" selected>English (India) - en-IN</option>
                 <option value="hi-IN">Hindi (India) - hi-IN</option>
                 <option value="en-US">English (US) - en-US</option>
             </select>
-            <span id="liveClock">00:00:00</span>
-            <span id="liveDate">Loading date...</span>
+            <span id="liveClock" style="color: var(--cyan);">00:00:00</span>
         </div>
     </header>
 
@@ -447,6 +533,7 @@
 
             <div class="controls-grid">
                 <button id="micBtn" class="primary-btn">🎤 TAP TO SPEAK</button>
+                <button id="profileBtn">👤 IDENTITY / BOSS</button>
                 <button id="briefingBtn">⚡ DAILY BRIEFING</button>
                 <button id="faceBtn">👁 FACE SCAN</button>
                 <button id="musicBtn">🎵 PLAY MUSIC</button>
@@ -457,30 +544,43 @@
         <!-- Right: Diagnostic Console -->
         <section class="card terminal-container">
             <div class="terminal-header">
-                <span>DIAGNOSTIC CONSOLE // CONTINUOUS STREAMING READY</span>
+                <span>DIAGNOSTIC CONSOLE // CREATOR: ASHUTOSH</span>
                 <span id="speechSupport">WEB SPEECH READY</span>
             </div>
 
             <div id="terminalLogs" class="terminal-logs">
                 <div class="log-line">
-                    <span class="log-sender-sys">[SYSTEM]:</span> J.A.R.V.I.S. Core v2.8 Online with Continuous Speech Recognition.
+                    <span class="log-sender-sys">[SYSTEM]:</span> J.A.R.V.I.S. Core v3.0 Online across all screens and devices.
                 </div>
                 <div class="log-line">
-                    <span class="log-sender-sys">[SYSTEM]:</span> Speak naturally: "Play Bhojpuri song", "Play Arijit Singh", "Open Google", "Open YouTube", or "Weather in Delhi".
+                    <span class="log-sender-sys">[SYSTEM]:</span> System Creator & Boss: <strong>Ashutosh</strong>.
                 </div>
                 <div class="log-line">
-                    <span class="log-sender-jarvis">[JARVIS]:</span> All systems operational, Boss. Say "Play Bhojpuri song" or tap the microphone, and I will play it on YouTube immediately.
+                    <span class="log-sender-jarvis">[JARVIS]:</span> Greetings! I am J.A.R.V.I.S., developed and commanded by my boss, Ashutosh. Standing by for your instructions.
                 </div>
             </div>
 
             <div class="input-bar">
-                <input type="text" id="commandInput" placeholder="Live speech preview or type here (e.g. 'play bhojpuri song', 'open google')...">
+                <input type="text" id="commandInput" placeholder="Try saying 'who is your boss', 'play bhojpuri song', 'who created you'...">
                 <button id="sendBtn">SEND ➤</button>
             </div>
         </section>
 
         <!-- Bottom Widgets Section -->
         <section class="widgets-section">
+            <!-- Global Creator Card (Visible to anyone on any screen) -->
+            <div class="widget-card">
+                <div class="widget-title">
+                    <span>👑 CREATOR & BOSS INFORMATION</span>
+                    <span style="font-size: 0.75rem; color: var(--neon-green);">VERIFIED</span>
+                </div>
+                <p style="font-size: 0.88rem; color: var(--text-dim); line-height: 1.6;">
+                    • Project Creator: <strong style="color: var(--cyan);">Ashutosh</strong><br>
+                    • Title: <span style="color: #fff;">Creator, Lead Developer & Master of JARVIS</span><br>
+                    • Recognized on: <span style="color: var(--neon-green);">All screens, devices, and browsers globally</span>
+                </p>
+            </div>
+
             <!-- Smart Home Hub -->
             <div class="widget-card">
                 <div class="widget-title">
@@ -504,52 +604,78 @@
             <!-- Productivity & Tasks -->
             <div class="widget-card">
                 <div class="widget-title">
-                    <span>📋 TASKS & TO-DO</span>
+                    <span>📋 TASKS & VOICE COMMANDS</span>
                     <span id="taskCount" style="font-size: 0.75rem; color: var(--cyan);">2 Tasks</span>
                 </div>
                 <div id="todoList" style="font-size: 0.9rem; line-height: 1.8;">
-                    <div>• Test speech: "Play Bhojpuri song"</div>
-                    <div>• Test speech: "Open Google" or "Open YouTube"</div>
+                    <div>• Ask: "Who is your boss?"</div>
+                    <div>• Say: "Play Bhojpuri song"</div>
                 </div>
-            </div>
-
-            <!-- Notes & Memory -->
-            <div class="widget-card">
-                <div class="widget-title">
-                    <span>🧠 SYSTEM CAPABILITIES</span>
-                    <span style="font-size: 0.75rem; color: var(--cyan);">Active</span>
-                </div>
-                <p id="memoryPreview" style="font-size: 0.88rem; color: var(--text-dim); line-height: 1.5;">
-                    • Multi-word Continuous Stream: Enabled<br>
-                    • Music Engine: YouTube Search & Playback<br>
-                    • Accent Support: English (India) & Hindi
-                </p>
             </div>
         </section>
     </main>
 
-    <!-- Face Recognition Scanner Modal -->
-    <div id="cameraModal">
-        <div class="scan-overlay">
-            <video id="webcamVideo" autoplay playsinline></video>
-            <div class="scan-line"></div>
+    <!-- User & Boss Identity Setup Modal (Works on Any Screen) -->
+    <div id="profileModal" class="modal-overlay">
+        <div class="modal-card">
+            <h2 class="modal-title">WHO IS USING THIS SCREEN?</h2>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 15px; text-align: center; line-height: 1.4;">
+                JARVIS is created and owned by <strong>Ashutosh</strong>. Please select your role on this device:
+            </p>
+
+            <div class="form-group">
+                <label>Your Identity on this Screen:</label>
+                <select id="userRoleSelect">
+                    <option value="boss">👑 I am Ashutosh (The Boss & Creator)</option>
+                    <option value="guest">👤 I am a Guest / Evaluator / Teacher</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="guestNameGroup" style="display: none;">
+                <label>Your Name (Guest Name):</label>
+                <input type="text" id="profGuestNameInput" placeholder="Enter your name...">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="saveProfileBtn" class="primary-btn" style="flex: 1;">CONFIRM & SAVE</button>
+                <button onclick="closeProfileModal()" style="background: transparent; border: 1px solid var(--border-glow); color: var(--text-dim);">CLOSE</button>
+            </div>
         </div>
-        <p id="scanStatus" style="font-family: 'Orbitron', sans-serif; color: var(--cyan); margin-top: 20px; letter-spacing: 2px;">
-            SCANNING FACIAL BIOMETRICS...
-        </p>
-        <button onclick="closeCameraModal()" style="margin-top: 15px; background: var(--border-glow); color: #fff;">CANCEL</button>
+    </div>
+
+    <!-- Face Recognition Scanner Modal -->
+    <div id="cameraModal" class="modal-overlay">
+        <div style="display: flex; flex-direction: column; align-items: center; max-width: 90%;">
+            <div class="scan-overlay">
+                <video id="webcamVideo" autoplay playsinline></video>
+                <div class="scan-line"></div>
+            </div>
+            <p id="scanStatus" style="font-family: 'Orbitron', sans-serif; color: var(--cyan); margin-top: 15px; letter-spacing: 2px; text-align: center;">
+                SCANNING BIOMETRICS...
+            </p>
+            <button onclick="closeCameraModal()" style="margin-top: 15px; background: var(--border-glow); color: #fff;">CANCEL</button>
+        </div>
     </div>
 
     <script>
         // =========================================================================
-        //                         SYSTEM STATE & MEMORY
+        //     PERMANENT GLOBAL CREATOR & MULTI-SCREEN VISITOR SESSION
         // =========================================================================
-        const memory = {
-            userName: "Boss",
-            city: "Delhi",
+        // Ashutosh is PERMANENTLY hardcoded as the Creator & Boss on EVERY screen globally!
+        const GLOBAL_CREATOR = "Ashutosh";
+        const GLOBAL_CREATOR_TITLE = "Creator, Master & Lead Developer of JARVIS";
+
+        // Local screen session (distinguishes whether Ashutosh or a Guest is using this screen)
+        const localRole = localStorage.getItem("jarvis_screen_role") || "boss";
+        const localGuestName = localStorage.getItem("jarvis_guest_name") || "Guest";
+
+        const session = {
+            isBossOnThisScreen: localRole === "boss",
+            visitorName: localRole === "boss" ? GLOBAL_CREATOR : localGuestName,
+            city: "Delhi, India",
             todos: [
-                "Test multi-word command: 'play bhojpuri song'",
-                "Test launcher: 'open google'"
+                "Ask: 'Who is your boss?'",
+                "Try saying: 'Play Bhojpuri song'"
             ],
             devices: {
                 light: false,
@@ -558,11 +684,20 @@
             }
         };
 
-        let currentState = "idle"; // 'idle' | 'listening' | 'processing' | 'speaking'
+        function updateSessionUI() {
+            if (session.isBossOnThisScreen) {
+                document.getElementById("bossPillBtn").innerText = `👑 BOSS: ${GLOBAL_CREATOR.toUpperCase()}`;
+            } else {
+                document.getElementById("bossPillBtn").innerText = `👤 VISITOR: ${session.visitorName.toUpperCase()} (BOSS: ${GLOBAL_CREATOR.toUpperCase()})`;
+            }
+        }
+        updateSessionUI();
+
+        let currentState = "idle";
         let synth = window.speechSynthesis;
         let recognition = null;
         let isListening = false;
-        let isSpeaking = false; // Blocks microphone feedback loop
+        let isSpeaking = false;
         let speechDebounceTimer = null;
         let accumulatedSpeechText = "";
 
@@ -733,7 +868,6 @@
             if (!synth) return;
             synth.cancel();
 
-            // Stop microphone immediately while speaking
             if (recognition && isListening) {
                 try { recognition.abort(); } catch(e){}
                 isListening = false;
@@ -766,22 +900,19 @@
         function updateClock() {
             const now = new Date();
             document.getElementById("liveClock").innerText = now.toLocaleTimeString();
-            document.getElementById("liveDate").innerText = now.toLocaleDateString(undefined, {
-                weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
-            });
         }
         setInterval(updateClock, 1000);
         updateClock();
 
         // =========================================================================
-        //    CONTINUOUS MULTI-WORD STREAMING SPEECH RECOGNITION (FIX FOR CUTOFFS)
+        //    CONTINUOUS MULTI-WORD STREAMING SPEECH RECOGNITION
         // =========================================================================
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 
         if (SpeechRec) {
             recognition = new SpeechRec();
-            recognition.continuous = true;      // CRITICAL: Keeps listening across words so "bhojpuri song" is never dropped!
-            recognition.interimResults = true;  // CRITICAL: Streams live speech tokens without waiting
+            recognition.continuous = true;
+            recognition.interimResults = true;
             
             const langSelect = document.getElementById("langSelect");
             recognition.lang = langSelect.value;
@@ -817,12 +948,10 @@
                 const liveSentence = (accumulatedSpeechText + " " + interimChunk).trim();
 
                 if (liveSentence) {
-                    // Update live feedback in real time so user SEES "play bhojpuri song" being heard
                     document.getElementById("commandInput").value = liveSentence;
                     updateStatus("listening", `"${liveSentence}"`);
                 }
 
-                // Debounce timer: wait 1.3 seconds of silence to ensure user finished speaking all words
                 clearTimeout(speechDebounceTimer);
                 speechDebounceTimer = setTimeout(() => {
                     const finalCommand = (accumulatedSpeechText + " " + interimChunk).trim();
@@ -839,7 +968,6 @@
             };
 
             recognition.onerror = (e) => {
-                console.warn("Speech error:", e.error);
                 if (e.error !== "no-speech") {
                     isListening = false;
                     if (!isSpeaking) updateStatus("idle");
@@ -917,16 +1045,54 @@
         // =========================================================================
         async function handleCommand(rawQuery) {
             updateStatus("processing");
-            // Clean: lowercase, remove punctuation
             const clean = rawQuery.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
             let reply = "";
 
-            // 1. PLAY MUSIC / YOUTUBE SONGS (e.g. "play bhojpuri song", "play arijit singh", "play music")
-            if (clean.startsWith("play ") || clean.includes("play ") || clean.includes("song") || clean.includes("songs") || clean.includes("gana") || clean.includes("music") || clean.includes("track")) {
+            // 1. BOSS & CREATOR IDENTITY - WORKS ON ANY SCREEN IN THE WORLD!
+            if (clean.includes("who is your boss") || clean.includes("who is you boss") || 
+                clean.includes("who is the boss") || clean.includes("who is your master") || 
+                clean.includes("who is your owner") || clean.includes("who is your creator")) {
+                reply = `My boss, creator, and master is ${GLOBAL_CREATOR}! He built and programmed this entire system from scratch.`;
+            }
+            else if (clean.includes("who created you") || clean.includes("who made you") || 
+                     clean.includes("who developed you") || clean.includes("who built you") || 
+                     clean.includes("who programmed you")) {
+                reply = `I was built, coded, and brought to life by my boss, ${GLOBAL_CREATOR}, as an advanced AI desktop assistant project!`;
+            }
+            else if (clean.includes("who is ashutosh")) {
+                reply = `Ashutosh is my brilliant boss, creator, and developer. Everything in this system operates under his authority!`;
+            }
+            else if (clean.includes("who am i") || clean.includes("what is my name")) {
+                if (session.isBossOnThisScreen) {
+                    reply = `You are ${GLOBAL_CREATOR}, my boss, developer, and master of this system!`;
+                } else {
+                    reply = `You are ${session.visitorName}, currently testing this AI assistant created by my boss, ${GLOBAL_CREATOR}.`;
+                }
+            }
+            else if (clean.startsWith("my name is ") || clean.startsWith("call me ")) {
+                const newName = clean.replace(/^(my name is|call me)\s+/, "").trim();
+                if (newName) {
+                    const formatted = newName.charAt(0).toUpperCase() + newName.slice(1);
+                    session.visitorName = formatted;
+                    if (formatted.toLowerCase() === GLOBAL_CREATOR.toLowerCase()) {
+                        session.isBossOnThisScreen = true;
+                        localStorage.setItem("jarvis_screen_role", "boss");
+                        reply = `Identity confirmed, Boss Ashutosh! Full administrator command granted.`;
+                    } else {
+                        session.isBossOnThisScreen = false;
+                        localStorage.setItem("jarvis_screen_role", "guest");
+                        localStorage.setItem("jarvis_guest_name", formatted);
+                        reply = `Nice to meet you, ${formatted}! I have registered your name on this screen. My boss remains Ashutosh.`;
+                    }
+                    updateSessionUI();
+                }
+            }
+
+            // 2. PLAY MUSIC / YOUTUBE SONGS (e.g. "play bhojpuri song", "play arijit singh", "play music")
+            else if (clean.startsWith("play ") || clean.includes("play ") || clean.includes("song") || clean.includes("songs") || clean.includes("gana") || clean.includes("music") || clean.includes("track")) {
                 let song = clean.replace(/^(please\s+)?(play\s+)?(some\s+)?(the\s+)?/, "").trim();
                 song = song.replace(/\s+on youtube$/, "").trim();
                 
-                // If user just said "play" or "music" with no specific title
                 if (!song || song === "play" || song === "music" || song === "song" || song === "songs") {
                     song = "bhojpuri hit songs";
                 }
@@ -936,13 +1102,13 @@
                 return;
             }
 
-            // 2. OPEN YOUTUBE (Direct site navigation)
+            // 3. OPEN YOUTUBE
             else if (clean.includes("youtube")) {
                 openTargetUrl("https://www.youtube.com", "YouTube", "Opening YouTube for you now, Boss.");
                 return;
             }
 
-            // 3. GOOGLE SEARCH OR OPEN GOOGLE
+            // 4. GOOGLE SEARCH OR OPEN GOOGLE
             else if (clean.includes("google")) {
                 if (clean.startsWith("search") || clean.includes("search google for") || clean.includes("search for")) {
                     const query = clean.replace(/^(search|search google for|search for|google)\s+/, "").trim();
@@ -953,37 +1119,29 @@
                 return;
             }
 
-            // 4. OPEN WHATSAPP
+            // 5. OPEN POPULAR APPS (WhatsApp, Gmail, GitHub, ChatGPT, Instagram)
             else if (clean.includes("whatsapp")) {
                 openTargetUrl("https://web.whatsapp.com", "WhatsApp Web", "Opening WhatsApp Web.");
                 return;
             }
-
-            // 5. OPEN GMAIL
             else if (clean.includes("gmail") || clean.includes("open mail") || clean.includes("open email")) {
                 openTargetUrl("https://mail.google.com", "Gmail", "Opening your Gmail inbox.");
                 return;
             }
-
-            // 6. OPEN GITHUB
             else if (clean.includes("github")) {
                 openTargetUrl("https://github.com", "GitHub", "Opening GitHub.");
                 return;
             }
-
-            // 7. OPEN CHATGPT
             else if (clean.includes("chatgpt") || clean.includes("chat gpt") || clean.includes("open ai")) {
                 openTargetUrl("https://chat.openai.com", "ChatGPT", "Opening ChatGPT.");
                 return;
             }
-
-            // 8. OPEN INSTAGRAM
             else if (clean.includes("instagram")) {
                 openTargetUrl("https://www.instagram.com", "Instagram", "Opening Instagram.");
                 return;
             }
 
-            // 9. GENERIC "OPEN [WEBSITE]"
+            // 6. GENERIC "OPEN [WEBSITE]"
             else if (clean.startsWith("open ") || clean.startsWith("launch ")) {
                 const target = clean.replace(/^(open|launch)\s+/, "").trim();
                 const domain = target.replace(/\s+/g, "");
@@ -991,7 +1149,7 @@
                 return;
             }
 
-            // 10. TIME & DATE
+            // 7. TIME & DATE
             else if (clean.includes("time") || clean.includes("what time")) {
                 const now = new Date();
                 reply = `The current time is ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`;
@@ -1000,15 +1158,15 @@
                 reply = `Today is ${now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}.`;
             }
 
-            // 11. DAILY BRIEFING
+            // 8. DAILY BRIEFING
             else if (clean.includes("briefing") || clean.includes("daily update")) {
                 const now = new Date();
                 const h = now.getHours();
                 const greeting = h < 12 ? "Good morning" : (h < 18 ? "Good afternoon" : "Good evening");
-                reply = `${greeting}, ${memory.userName}! All browser systems and smart home hubs are online. You have ${memory.todos.length} active tasks today.`;
+                reply = `${greeting}! All systems online. Creator and Boss registered as ${GLOBAL_CREATOR}. You have ${session.todos.length} active tasks today.`;
             }
 
-            // 12. WEATHER
+            // 9. WEATHER
             else if (clean.includes("weather") || clean.includes("temperature")) {
                 try {
                     let targetCity = "";
@@ -1031,22 +1189,22 @@
                 }
             }
 
-            // 13. SMART HOME CONTROL
+            // 10. SMART HOME CONTROL
             else if (clean.includes("light") || clean.includes("lights")) {
-                const newState = clean.includes("off") ? false : (clean.includes("on") ? true : !memory.devices.light);
+                const newState = clean.includes("off") ? false : (clean.includes("on") ? true : !session.devices.light);
                 toggleDevice("light", newState);
                 reply = `Living room lights have been turned ${newState ? "ON" : "OFF"}.`;
             } else if (clean.includes("ac") || clean.includes("air conditioner")) {
-                const newState = clean.includes("off") ? false : (clean.includes("on") ? true : !memory.devices.ac);
+                const newState = clean.includes("off") ? false : (clean.includes("on") ? true : !session.devices.ac);
                 toggleDevice("ac", newState);
                 reply = `Air conditioning has been switched ${newState ? "ON" : "OFF"}.`;
             } else if (clean.includes("door") || clean.includes("lock")) {
-                const newState = clean.includes("unlock") ? false : (clean.includes("lock") ? true : !memory.devices.door);
+                const newState = clean.includes("unlock") ? false : (clean.includes("lock") ? true : !session.devices.door);
                 toggleDevice("door", newState);
                 reply = `Main door has been ${newState ? "LOCKED" : "UNLOCKED"}.`;
             }
 
-            // 14. MATH EVALUATOR
+            // 11. MATH EVALUATOR
             else if (clean.includes("calculate") || (clean.includes("what is") && /\d+\s*[\+\-\*\/]/.test(clean))) {
                 const mathExpr = clean.replace(/^(calculate|what is)\s+/, "")
                                       .replace(/times/g, "*").replace(/multiplied by/g, "*")
@@ -1060,7 +1218,7 @@
                 }
             }
 
-            // 15. JOKES
+            // 12. JOKES
             else if (clean.includes("joke") || clean.includes("make me laugh")) {
                 const jokes = [
                     "Why do programmers prefer dark mode? Because light attracts bugs!",
@@ -1071,27 +1229,13 @@
                 reply = jokes[Math.floor(Math.random() * jokes.length)];
             }
 
-            // 16. PRODUCTIVITY (TODOS)
-            else if (clean.startsWith("add to do") || clean.startsWith("add todo") || clean.startsWith("add task") || clean.startsWith("todo ")) {
-                const task = clean.replace(/^(add to do|add todo|add task|todo)\s+/, "").trim();
-                if (task) {
-                    memory.todos.push(task);
-                    renderTodos();
-                    reply = `Task added to schedule: ${task}.`;
-                }
-            } else if (clean.includes("clear to do") || clean.includes("clear todo") || clean.includes("clear tasks")) {
-                memory.todos = [];
-                renderTodos();
-                reply = "Your to-do list has been cleared.";
-            }
-
-            // 17. FACE SCAN
+            // 13. FACE SCAN
             else if (clean.includes("face") || clean.includes("scan") || clean.includes("biometric")) {
                 startFaceScan();
-                reply = "Initiating facial biometric scan.";
+                reply = `Initiating facial biometric scan.`;
             }
 
-            // 18. WIKIPEDIA KNOWLEDGE LOOKUP
+            // 14. WIKIPEDIA KNOWLEDGE LOOKUP
             else if (clean.startsWith("who is ") || clean.startsWith("what is ") || clean.startsWith("tell me about ") || clean.startsWith("explain ")) {
                 const cleanTerm = clean.replace(/^(who is|what is|tell me about|explain)\s+/, "").trim();
                 try {
@@ -1112,20 +1256,19 @@
                 }
             }
 
-            // 19. CONVERSATIONAL DIALOGUE
+            // 15. CONVERSATIONAL DIALOGUE
             else {
                 if (clean.includes("hello") || clean.includes("hi") || clean.includes("hey")) {
-                    reply = `Greetings, ${memory.userName}! All systems are online and ready.`;
+                    reply = `Greetings! I am online and ready to assist you on behalf of my boss, ${GLOBAL_CREATOR}.`;
                 } else if (clean.includes("how are you")) {
-                    reply = "I am operating at peak efficiency, Boss. How are you doing today?";
+                    reply = `I am running at optimal capacity! How can I assist you today?`;
                 } else if (clean.includes("who are you") || clean.includes("what is your name")) {
-                    reply = "I am J.A.R.V.I.S., your Just A Rather Very Intelligent System.";
+                    reply = `I am J.A.R.V.I.S., your Just A Rather Very Intelligent System, commanded by my boss, ${GLOBAL_CREATOR}.`;
                 } else if (clean.includes("thank you") || clean.includes("thanks")) {
-                    reply = "You are most welcome, Boss. Anything else you need?";
+                    reply = `You are very welcome! Let me know if you need anything else.`;
                 } else if (clean.includes("what can you do") || clean.includes("help")) {
-                    reply = "I can play any song on YouTube, open Google, tell time and weather, calculate numbers, answer Wikipedia queries, and manage your to-dos!";
+                    reply = `I can play any song on YouTube, open Google, tell who my boss is, tell time and weather, calculate numbers, answer Wikipedia queries, and manage smart home controls!`;
                 } else {
-                    // Try Wikipedia fallback
                     try {
                         const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`);
                         if (wikiRes.ok) {
@@ -1137,7 +1280,7 @@
                     } catch(e) {}
 
                     if (!reply) {
-                        reply = `I heard: "${rawQuery}". Say "Play Bhojpuri song", "Open Google", "Weather", or ask any question.`;
+                        reply = `I heard: "${rawQuery}". Say "Who is your boss", "Play Bhojpuri song", "Open Google", or ask any question.`;
                     }
                 }
             }
@@ -1147,16 +1290,60 @@
         }
 
         // =========================================================================
+        //                 USER / BOSS IDENTITY SETUP MODAL
+        // =========================================================================
+        function openProfileModal() {
+            document.getElementById("profileModal").style.display = "flex";
+            const roleSelect = document.getElementById("userRoleSelect");
+            roleSelect.value = session.isBossOnThisScreen ? "boss" : "guest";
+            document.getElementById("guestNameGroup").style.display = session.isBossOnThisScreen ? "none" : "block";
+        }
+
+        function closeProfileModal() {
+            document.getElementById("profileModal").style.display = "none";
+        }
+
+        document.getElementById("userRoleSelect").addEventListener("change", (e) => {
+            document.getElementById("guestNameGroup").style.display = e.target.value === "guest" ? "block" : "none";
+        });
+
+        document.getElementById("profileBtn").addEventListener("click", openProfileModal);
+        document.getElementById("bossPillBtn").addEventListener("click", openProfileModal);
+
+        document.getElementById("saveProfileBtn").addEventListener("click", () => {
+            const role = document.getElementById("userRoleSelect").value;
+            if (role === "boss") {
+                session.isBossOnThisScreen = true;
+                session.visitorName = GLOBAL_CREATOR;
+                localStorage.setItem("jarvis_screen_role", "boss");
+                const msg = `Welcome, Boss Ashutosh! Full administrator control active.`;
+                logMessage("JARVIS", msg);
+                speak(msg);
+            } else {
+                const guestName = document.getElementById("profGuestNameInput").value.trim() || "Guest";
+                session.isBossOnThisScreen = false;
+                session.visitorName = guestName;
+                localStorage.setItem("jarvis_screen_role", "guest");
+                localStorage.setItem("jarvis_guest_name", guestName);
+                const msg = `Welcome, ${guestName}! I am pleased to assist you on behalf of my creator, Ashutosh.`;
+                logMessage("JARVIS", msg);
+                speak(msg);
+            }
+            updateSessionUI();
+            closeProfileModal();
+        });
+
+        // =========================================================================
         //                          SMART HOME TOGGLES
         // =========================================================================
         function toggleDevice(device, forceState) {
             if (typeof forceState !== "undefined") {
-                memory.devices[device] = forceState;
+                session.devices[device] = forceState;
             } else {
-                memory.devices[device] = !memory.devices[device];
+                session.devices[device] = !session.devices[device];
             }
             const badge = document.getElementById(`dev-${device}`);
-            const state = memory.devices[device];
+            const state = session.devices[device];
 
             if (device === "door") {
                 badge.className = state ? "device-badge badge-on" : "device-badge badge-off";
@@ -1166,14 +1353,6 @@
                 badge.innerText = state ? "ON" : "OFF";
             }
         }
-
-        function renderTodos() {
-            const list = document.getElementById("todoList");
-            const count = document.getElementById("taskCount");
-            count.innerText = `${memory.todos.length} Tasks`;
-            list.innerHTML = memory.todos.map(t => `<div>• ${t}</div>`).join("") || "<div style='color: var(--text-dim);'>No active tasks.</div>";
-        }
-        renderTodos();
 
         // =========================================================================
         //                      FACE RECOGNITION SCANNER
@@ -1190,17 +1369,17 @@
             try {
                 videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = videoStream;
-                status.innerText = "SCANNING FACIAL BIOMETRICS...";
+                status.innerText = `SCANNING BIOMETRICS (CREATOR: ${GLOBAL_CREATOR.toUpperCase()})...`;
 
                 setTimeout(() => {
-                    status.innerText = "MATCH CONFIRMED: 99.8% - ACCESS GRANTED";
-                    speak(`Biometrics confirmed. Welcome back, ${memory.userName}.`);
+                    status.innerText = `MATCH CONFIRMED: 99.8% - ACCESS GRANTED TO BOSS ${GLOBAL_CREATOR.toUpperCase()}`;
+                    speak(`Biometrics confirmed. Welcome back, Boss ${GLOBAL_CREATOR}.`);
                     setTimeout(closeCameraModal, 2000);
                 }, 3000);
             } catch (err) {
-                status.innerText = "CAMERA UNAVAILABLE (SIMULATING ACCESS GRANTED)";
+                status.innerText = `CAMERA SIMULATION (ACCESS GRANTED TO BOSS ${GLOBAL_CREATOR.toUpperCase()})`;
                 setTimeout(() => {
-                    speak(`Biometric simulation complete. Welcome back, ${memory.userName}.`);
+                    speak(`Biometric scan complete. Welcome back, Boss ${GLOBAL_CREATOR}.`);
                     closeCameraModal();
                 }, 2000);
             }
