@@ -1,0 +1,41 @@
+{
+    "user_name": "Boss",
+    "assistant_name": "Jarvis",
+    "city": "india",
+    "voice_rate": 175,
+    "gemini_api_key": "",
+    "wake_word_enabled": true,
+    "preferences": {
+        "favorite_music": "Iron Man AC/DC",
+        "default_browser": "google",
+        "theme": "cyan_glow"
+    },
+    "facts": {},
+    "todos": [
+        "Welcome to JARVIS! Try saying 'what can you do'",
+        "Say 'Hey Jarvis' to wake me up anytime"
+    ],
+    "smart_devices": {
+        "living room light": {
+            "state": "off",
+            "type": "light"
+        },
+        "bedroom light": {
+            "state": "off",
+            "type": "light"
+        },
+        "air conditioner": {
+            "state": "on",
+            "type": "ac",
+            "temp": 22
+        },
+        "main door lock": {
+            "state": "locked",
+            "type": "lock"
+        },
+        "smart fan": {
+            "state": "off",
+            "type": "fan"
+        }
+    }
+}

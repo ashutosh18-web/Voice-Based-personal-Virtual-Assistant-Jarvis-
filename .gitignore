@@ -1,0 +1,21 @@
+# Python Bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# User dynamic data & personal memory
+jarvis_notes.txt
+screenshots/
+*.png
+*.jpg
+
+# Virtual environment
+venv/
+env/
+.env
+
+# IDE and OS files
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
