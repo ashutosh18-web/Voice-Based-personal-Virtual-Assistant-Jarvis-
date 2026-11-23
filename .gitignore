@@ -8,6 +8,12 @@ jarvis_notes.txt
 screenshots/
 *.png
 *.jpg
+*.jpeg
+
+# Presentations, Reports & Generated PDFs
+*.pdf
+*.pptx
+*.docx
 
 # Virtual environment
 venv/
