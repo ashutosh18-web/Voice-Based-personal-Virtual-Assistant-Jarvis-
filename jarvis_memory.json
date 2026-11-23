@@ -2,6 +2,7 @@
     "user_name": "Boss",
     "assistant_name": "Jarvis",
     "city": "india",
+    "language": "auto",
     "voice_rate": 175,
     "gemini_api_key": "",
     "wake_word_enabled": true,
@@ -13,7 +14,9 @@
     "facts": {},
     "todos": [
         "Welcome to JARVIS! Try saying 'what can you do'",
-        "Say 'Hey Jarvis' to wake me up anytime"
+        "Say 'Hey Jarvis' to wake me up anytime",
+        "\u091f\u093e\u0938\u094d\u0915 \u091c\u094b\u0921\u093c\u094b \u0915\u0949\u0932\u0947\u091c \u092a\u094d\u0930\u094b\u091c\u0947\u0915\u094d\u091f \u0938\u092c\u092e\u093f\u091f \u0915\u0930\u0928\u093e",
+        "\u091f\u093e\u0938\u094d\u0915 \u091c\u094b\u0921\u093c\u094b \u0915\u0949\u0932\u0947\u091c \u092a\u094d\u0930\u094b\u091c\u0947\u0915\u094d\u091f \u0938\u092c\u092e\u093f\u091f \u0915\u0930\u0928\u093e"
     ],
     "smart_devices": {
         "living room light": {
@@ -34,7 +37,7 @@
             "type": "lock"
         },
         "smart fan": {
-            "state": "off",
+            "state": "on",
             "type": "fan"
         }
     }

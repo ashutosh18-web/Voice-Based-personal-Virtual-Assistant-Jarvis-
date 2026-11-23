@@ -442,11 +442,11 @@
             <span class="badge-core">ONLINE v3.1</span>
         </div>
         <div class="header-meta">
-            <label for="langSelect" style="color: var(--text-dim); font-size: 0.8rem;">Language/Accent:</label>
+            <label for="langSelect" style="color: var(--text-dim); font-size: 0.8rem;">Language/भाषा:</label>
             <select id="langSelect" class="lang-select">
-                <option value="en-IN" selected>English (India) - en-IN</option>
-                <option value="hi-IN">Hindi (India) - hi-IN</option>
-                <option value="en-US">English (US) - en-US</option>
+                <option value="hi-IN" selected>🇮🇳 हिन्दी (Hindi - hi-IN)</option>
+                <option value="en-IN">🇮🇳 English (India - en-IN)</option>
+                <option value="en-US">🌐 English (US - en-US)</option>
             </select>
             <span id="liveClock" style="color: var(--cyan);">00:00:00</span>
         </div>
@@ -744,7 +744,7 @@
         }
 
         // =========================================================================
-        //               SPEECH SYNTHESIS WITH ECHO SUPPRESSION
+        //               SPEECH SYNTHESIS WITH ECHO SUPPRESSION & HINDI SUPPORT
         // =========================================================================
         function speak(text) {
             if (!synth) return;
@@ -759,13 +759,24 @@
             updateStatus("speaking");
 
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.05;
+            utterance.rate = 1.0;
             utterance.pitch = 1.0;
 
             const voices = synth.getVoices();
-            const preferred = voices.find(v => v.lang.includes("en") && 
-                (v.name.includes("India") || v.name.includes("Google") || v.name.includes("David") || v.name.includes("Natural")));
-            if (preferred) utterance.voice = preferred;
+            const langVal = document.getElementById("langSelect") ? document.getElementById("langSelect").value : "en-IN";
+            const isHindi = /[\u0900-\u097F]/.test(text) || langVal === "hi-IN";
+
+            if (isHindi) {
+                utterance.lang = "hi-IN";
+                const hindiVoice = voices.find(v => (v.lang && (v.lang.includes("hi") || v.lang.includes("HI"))) || 
+                    (v.name && (v.name.includes("Hindi") || v.name.includes("Kalpana") || v.name.includes("Hemant") || v.name.includes("Swara"))));
+                if (hindiVoice) utterance.voice = hindiVoice;
+            } else {
+                utterance.lang = "en-IN";
+                const preferred = voices.find(v => v.lang && v.lang.includes("en") && 
+                    (v.name.includes("India") || v.name.includes("Google") || v.name.includes("David") || v.name.includes("Natural")));
+                if (preferred) utterance.voice = preferred;
+            }
 
             const onSpeechDone = () => {
                 isSpeaking = false;
@@ -797,9 +808,20 @@
             recognition.interimResults = true;
             
             const langSelect = document.getElementById("langSelect");
-            recognition.lang = langSelect.value;
+            const savedLang = localStorage.getItem("jarvis_lang") || "hi-IN";
+            if (langSelect) langSelect.value = savedLang;
+            recognition.lang = savedLang;
+
             langSelect.addEventListener("change", (e) => {
-                recognition.lang = e.target.value;
+                const newLang = e.target.value;
+                recognition.lang = newLang;
+                localStorage.setItem("jarvis_lang", newLang);
+                if (isListening) {
+                    try { recognition.stop(); } catch(err) {}
+                    setTimeout(() => {
+                        try { recognition.start(); } catch(err) {}
+                    }, 250);
+                }
                 logMessage("SYSTEM", `Recognition language set to: ${e.target.options[e.target.selectedIndex].text}`);
             });
 
@@ -923,98 +945,111 @@
         }
 
         // =========================================================================
-        //                          COMPREHENSIVE COMMAND HANDLER
+        //                          COMPREHENSIVE COMMAND HANDLER (EN + HI)
         // =========================================================================
         async function handleCommand(rawQuery) {
             updateStatus("processing");
-            const clean = rawQuery.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+            const clean = rawQuery.toLowerCase().replace(/[^\w\s\u0900-\u097F]/gi, " ").replace(/\s+/g, " ").trim();
+            const isHindi = /[\u0900-\u097F]/.test(rawQuery) || 
+                /\b(namaste|pranam|kholo|chalu|band|batao|kya|hai|samay|mausam|aaj|gaana|gana|bajao|geet|sunao|tariq|tarikh|kaun|kaise|shukriya|dhanyawad)\b/i.test(rawQuery) ||
+                (document.getElementById("langSelect") && document.getElementById("langSelect").value === "hi-IN");
             let reply = "";
 
-            // 1. PLAY MUSIC / YOUTUBE SONGS (e.g. "play bhojpuri song", "play arijit singh", "play music")
-            if (clean.startsWith("play ") || clean.includes("play ") || clean.includes("song") || clean.includes("songs") || clean.includes("gana") || clean.includes("music") || clean.includes("track")) {
-                let song = clean.replace(/^(please\s+)?(play\s+)?(some\s+)?(the\s+)?/, "").trim();
-                song = song.replace(/\s+on youtube$/, "").trim();
+            // 1. PLAY MUSIC / YOUTUBE SONGS (English & Hindi)
+            if (!clean.includes("joke") && !clean.includes("चुटकुला") && !clean.includes("जोक") &&
+                (clean.startsWith("play ") || clean.includes("play ") || clean.includes("song") || clean.includes("songs") || 
+                clean.includes("music") || clean.includes("track") || clean.includes("गाना") || clean.includes("गीत") || 
+                clean.includes("संगीत") || clean.includes("बजाओ") || clean.includes("चलाओ") || clean.includes("सुनाओ") || 
+                clean.includes("gana") || clean.includes("bajao") || clean.includes("chalao") || clean.includes("geet"))) {
                 
-                if (!song || song === "play" || song === "music" || song === "song" || song === "songs") {
-                    song = "bhojpuri hit songs";
+                let song = clean.replace(/^(कृपया\s+)?(मुझे\s+)?(कोई\s+)?(गाना\s+)?(बजाओ\s+|चलाओ\s+|सुनाओ\s+)?(please\s+)?(play\s+)?(some\s+)?(the\s+)?/, "").trim();
+                song = song.replace(/\s+(on youtube|यूट्यूब पर|यूट्यूब पे|सुनाओ|बजाओ|चलाओ|का गाना|गाना)$/i, "").trim();
+                
+                if (!song || song === "play" || song === "music" || song === "song" || song === "songs" || song === "गाना" || song === "गीत" || song === "gana") {
+                    song = isHindi ? "bhojpuri hit songs" : "Iron Man AC/DC";
                 }
 
+                const speechText = isHindi ? `यूट्यूब पर '${song}' बजा रहा हूँ, बॉस।` : `Playing '${song}' on YouTube for you, Boss.`;
                 openTargetUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(song)}`, 
-                              `Song: "${song}"`, `Playing ${song} on YouTube for you, Boss.`);
+                              `Song: "${song}"`, speechText);
                 return;
             }
 
             // 2. OPEN YOUTUBE
-            else if (clean.includes("youtube")) {
-                openTargetUrl("https://www.youtube.com", "YouTube", "Opening YouTube for you now, Boss.");
+            else if (clean.includes("youtube") || clean.includes("यूट्यूब")) {
+                const speechText = isHindi ? "यूट्यूब खोल रहा हूँ, बॉस।" : "Opening YouTube for you now, Boss.";
+                openTargetUrl("https://www.youtube.com", "YouTube", speechText);
                 return;
             }
 
             // 3. GOOGLE SEARCH OR OPEN GOOGLE
-            else if (clean.includes("google")) {
-                if (clean.startsWith("search") || clean.includes("search google for") || clean.includes("search for")) {
-                    const query = clean.replace(/^(search|search google for|search for|google)\s+/, "").trim();
-                    openTargetUrl(`https://www.google.com/search?q=${encodeURIComponent(query)}`, `Google: "${query}"`, `Searching Google for ${query}.`);
+            else if (clean.includes("google") || clean.includes("गूगल") || clean.includes("सर्च") || clean.includes("खोजो") || clean.includes("ढूंढो")) {
+                if (clean.startsWith("search") || clean.includes("search google for") || clean.includes("search for") || 
+                    clean.includes("सर्च करो") || clean.includes("खोजो") || clean.includes("ढूंढो")) {
+                    const query = clean.replace(/^(search|search google for|search for|google|गूगल पर|सर्च करो|खोजो|ढूंढो)\s+/, "").trim();
+                    const speechText = isHindi ? `गूगल पर '${query}' खोज रहा हूँ।` : `Searching Google for ${query}.`;
+                    openTargetUrl(`https://www.google.com/search?q=${encodeURIComponent(query)}`, `Google: "${query}"`, speechText);
                 } else {
-                    openTargetUrl("https://www.google.com", "Google", "Opening Google for you now, Boss.");
+                    const speechText = isHindi ? "गूगल खोल रहा हूँ, बॉस।" : "Opening Google for you now, Boss.";
+                    openTargetUrl("https://www.google.com", "Google", speechText);
                 }
                 return;
             }
 
             // 4. OPEN POPULAR APPS (WhatsApp, Gmail, GitHub, ChatGPT, Instagram)
-            else if (clean.includes("whatsapp")) {
-                openTargetUrl("https://web.whatsapp.com", "WhatsApp Web", "Opening WhatsApp Web.");
+            else if (clean.includes("whatsapp") || clean.includes("व्हाट्सएप")) {
+                openTargetUrl("https://web.whatsapp.com", "WhatsApp Web", isHindi ? "व्हाट्सएप वेब खोल रहा हूँ।" : "Opening WhatsApp Web.");
                 return;
             }
-            else if (clean.includes("gmail") || clean.includes("open mail") || clean.includes("open email")) {
-                openTargetUrl("https://mail.google.com", "Gmail", "Opening your Gmail inbox.");
+            else if (clean.includes("gmail") || clean.includes("जीमेल") || clean.includes("ईमेल") || clean.includes("open mail") || clean.includes("open email")) {
+                openTargetUrl("https://mail.google.com", "Gmail", isHindi ? "जीमेल इनबॉक्स खोल रहा हूँ।" : "Opening your Gmail inbox.");
                 return;
             }
-            else if (clean.includes("github")) {
-                openTargetUrl("https://github.com", "GitHub", "Opening GitHub.");
+            else if (clean.includes("github") || clean.includes("गिटहब")) {
+                openTargetUrl("https://github.com", "GitHub", isHindi ? "गिटहब खोल रहा हूँ।" : "Opening GitHub.");
                 return;
             }
-            else if (clean.includes("chatgpt") || clean.includes("chat gpt") || clean.includes("open ai")) {
-                openTargetUrl("https://chat.openai.com", "ChatGPT", "Opening ChatGPT.");
+            else if (clean.includes("chatgpt") || clean.includes("chat gpt") || clean.includes("चैटजीपीटी") || clean.includes("open ai")) {
+                openTargetUrl("https://chat.openai.com", "ChatGPT", isHindi ? "चैट जीपीटी खोल रहा हूँ।" : "Opening ChatGPT.");
                 return;
             }
-            else if (clean.includes("instagram")) {
-                openTargetUrl("https://www.instagram.com", "Instagram", "Opening Instagram.");
+            else if (clean.includes("instagram") || clean.includes("इंस्टाग्राम")) {
+                openTargetUrl("https://www.instagram.com", "Instagram", isHindi ? "इंस्टाग्राम खोल रहा हूँ।" : "Opening Instagram.");
                 return;
             }
 
             // 5. GENERIC "OPEN [WEBSITE]"
-            else if (clean.startsWith("open ") || clean.startsWith("launch ")) {
-                const target = clean.replace(/^(open|launch)\s+/, "").trim();
+            else if (clean.startsWith("open ") || clean.startsWith("launch ") || clean.includes("खोलो") || clean.includes("चालू करो") || clean.includes("kholo")) {
+                const target = clean.replace(/^(open|launch|kholo)\s+/, "").replace(/\s+(खोलो|चालू करो)$/, "").trim();
                 const domain = target.replace(/\s+/g, "");
-                openTargetUrl(`https://www.${domain}.com`, target.toUpperCase(), `Opening ${target}.`);
+                openTargetUrl(`https://www.${domain}.com`, target.toUpperCase(), isHindi ? `${target} खोल रहा हूँ।` : `Opening ${target}.`);
                 return;
             }
 
             // 6. TIME & DATE
-            else if (clean.includes("time") || clean.includes("what time")) {
+            else if (clean.includes("time") || clean.includes("what time") || clean.includes("समय") || clean.includes("टाइम") || clean.includes("कितने बजे") || clean.includes("samay") || clean.includes("kitne baje")) {
                 const now = new Date();
-                reply = `The current time is ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`;
-            } else if (clean.includes("date") || clean.includes("today")) {
+                reply = isHindi ? `अभी समय ${now.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' })} है।` : `The current time is ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`;
+            } else if (clean.includes("date") || clean.includes("today") || clean.includes("तारीख") || clean.includes("दिनांक") || clean.includes("आज कौन सा दिन") || clean.includes("tarikh") || clean.includes("aaj")) {
                 const now = new Date();
-                reply = `Today is ${now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}.`;
+                reply = isHindi ? `आज ${now.toLocaleDateString('hi-IN', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} है।` : `Today is ${now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}.`;
             }
 
             // 7. DAILY BRIEFING
-            else if (clean.includes("briefing") || clean.includes("daily update")) {
+            else if (clean.includes("briefing") || clean.includes("daily update") || clean.includes("अपडेट") || clean.includes("हालचाल")) {
                 const now = new Date();
                 const h = now.getHours();
-                const greeting = h < 12 ? "Good morning" : (h < 18 ? "Good afternoon" : "Good evening");
-                reply = `${greeting}, Boss! All systems are online. You have ${memory.todos.length} active tasks scheduled.`;
+                const greeting = h < 12 ? (isHindi ? "सुप्रभात" : "Good morning") : (h < 18 ? (isHindi ? "शुभ दोपहर" : "Good afternoon") : (isHindi ? "शुभ संध्या" : "Good evening"));
+                reply = isHindi ? `${greeting}, बॉस! सिस्टम के सभी मॉड्यूल एक्टिव हैं। आपके पास ${memory.todos.length} कार्य शेड्यूल हैं।` : `${greeting}, Boss! All systems are online. You have ${memory.todos.length} active tasks scheduled.`;
             }
 
             // 8. WEATHER
-            else if (clean.includes("weather") || clean.includes("temperature")) {
+            else if (clean.includes("weather") || clean.includes("temperature") || clean.includes("मौसम") || clean.includes("तापमान") || clean.includes("बारिश") || clean.includes("mausam") || clean.includes("tapman")) {
                 try {
                     let targetCity = "";
-                    const cityMatch = clean.match(/weather\s+(?:in|of|at)?\s*([a-z\s]+)/);
-                    if (cityMatch && cityMatch[1] && !["today", "now", ""].includes(cityMatch[1].trim())) {
-                        targetCity = cityMatch[1].trim();
+                    const cityMatch = clean.match(/(?:weather in|weather of|मौसम|तापमान)\s+([a-zA-Z\u0900-\u097F\s]+)/);
+                    if (cityMatch && cityMatch[1] && !["today", "now", "आज", "कैसा है", ""].includes(cityMatch[1].trim())) {
+                        targetCity = cityMatch[1].replace(/(का|में|कैसा है)$/, "").trim();
                     }
                     const url = targetCity ? `https://wttr.in/${encodeURIComponent(targetCity)}?format=j1` : `https://wttr.in/?format=j1`;
                     const res = await fetch(url);
@@ -1022,64 +1057,79 @@
                         const data = await res.json();
                         const current = data.current_condition[0];
                         const area = targetCity || data.nearest_area[0].areaName[0].value;
-                        reply = `The weather in ${area} is currently ${current.weatherDesc[0].value} with a temperature of ${current.temp_C} degrees Celsius and humidity at ${current.humidity}%.`;
+                        reply = isHindi ? 
+                            `${area} में अभी मौसम ${current.weatherDesc[0].value} है और तापमान ${current.temp_C} डिग्री सेल्सियस है।` : 
+                            `The weather in ${area} is currently ${current.weatherDesc[0].value} with a temperature of ${current.temp_C} degrees Celsius and humidity at ${current.humidity}%.`;
                     } else {
-                        reply = "Unable to fetch live weather at this moment.";
+                        reply = isHindi ? "मौसम की जानकारी अभी उपलब्ध नहीं हो पा रही है।" : "Unable to fetch live weather at this moment.";
                     }
                 } catch (e) {
-                    reply = "Weather service is temporarily unreachable.";
+                    reply = isHindi ? "मौसम सेवा से संपर्क नहीं हो पा रहा है।" : "Weather service is temporarily unreachable.";
                 }
             }
 
             // 9. SMART HOME CONTROL
-            else if (clean.includes("light") || clean.includes("lights")) {
-                const newState = clean.includes("off") ? false : (clean.includes("on") ? true : !memory.devices.light);
+            else if (clean.includes("light") || clean.includes("lights") || clean.includes("लाइट")) {
+                const turnOff = clean.includes("off") || clean.includes("बंद") || clean.includes("बुझाओ") || clean.includes("band");
+                const newState = turnOff ? false : (clean.includes("on") || clean.includes("जलाओ") || clean.includes("चालू") || clean.includes("chalu") ? true : !memory.devices.light);
                 toggleDevice("light", newState);
-                reply = `Living room lights have been turned ${newState ? "ON" : "OFF"}.`;
-            } else if (clean.includes("ac") || clean.includes("air conditioner")) {
-                const newState = clean.includes("off") ? false : (clean.includes("on") ? true : !memory.devices.ac);
+                reply = isHindi ? `लिविंग रूम की लाइट ${newState ? "चालू (ON)" : "बंद (OFF)"} कर दी गई है।` : `Living room lights have been turned ${newState ? "ON" : "OFF"}.`;
+            } else if (clean.includes("ac") || clean.includes("air conditioner") || clean.includes("एसी")) {
+                const turnOff = clean.includes("off") || clean.includes("बंद") || clean.includes("band");
+                const newState = turnOff ? false : (clean.includes("on") || clean.includes("चालू") || clean.includes("chalu") ? true : !memory.devices.ac);
                 toggleDevice("ac", newState);
-                reply = `Air conditioning has been switched ${newState ? "ON" : "OFF"}.`;
-            } else if (clean.includes("door") || clean.includes("lock")) {
-                const newState = clean.includes("unlock") ? false : (clean.includes("lock") ? true : !memory.devices.door);
+                reply = isHindi ? `एयर कंडीशनर ${newState ? "चालू (ON)" : "बंद (OFF)"} कर दिया गया है।` : `Air conditioning has been switched ${newState ? "ON" : "OFF"}.`;
+            } else if (clean.includes("door") || clean.includes("lock") || clean.includes("दरवाजा") || clean.includes("ताला")) {
+                const unlock = clean.includes("unlock") || clean.includes("खोलो") || clean.includes("kholo");
+                const newState = unlock ? false : (clean.includes("lock") || clean.includes("बंद") || clean.includes("band") ? true : !memory.devices.door);
                 toggleDevice("door", newState);
-                reply = `Main door has been ${newState ? "LOCKED" : "UNLOCKED"}.`;
+                reply = isHindi ? `मुख्य दरवाजा ${newState ? "लॉक (LOCKED)" : "अनलॉक (UNLOCKED)"} कर दिया गया है।` : `Main door has been ${newState ? "LOCKED" : "UNLOCKED"}.`;
             }
 
-            // 10. MATH EVALUATOR
-            else if (clean.includes("calculate") || (clean.includes("what is") && /\d+\s*[\+\-\*\/]/.test(clean))) {
-                const mathExpr = clean.replace(/^(calculate|what is)\s+/, "")
-                                      .replace(/times/g, "*").replace(/multiplied by/g, "*")
-                                      .replace(/divided by/g, "/").replace(/plus/g, "+").replace(/minus/g, "-")
+            // 10. MATH EVALUATOR (Bilingual)
+            else if (clean.includes("calculate") || clean.includes("हिसाब") || clean.includes("गणना") || clean.includes("जोड़ो") || clean.includes("गुणा") || (clean.includes("what is") && /\d+\s*[\+\-\*\/]/.test(clean))) {
+                const mathExpr = clean.replace(/^(calculate|what is|हिसाब करो|गणना करो|बताओ)\s+/, "")
+                                      .replace(/into/g, "*").replace(/times/g, "*").replace(/multiplied by/g, "*").replace(/guna/g, "*").replace(/गुना/g, "*")
+                                      .replace(/divided by/g, "/").replace(/divide by/g, "/").replace(/bhag/g, "/").replace(/भाग/g, "/")
+                                      .replace(/plus/g, "+").replace(/and/g, "+").replace(/jodo/g, "+").replace(/जोड़/g, "+").replace(/धन/g, "+")
+                                      .replace(/minus/g, "-").replace(/ghatao/g, "-").replace(/घटाव/g, "-").replace(/ऋण/g, "-")
                                       .replace(/[^0-9\+\-\*\/\.\(\)\s]/g, "");
                 try {
                     const result = Function(`'use strict'; return (${mathExpr})`)();
-                    reply = `The calculated result is ${result}.`;
+                    reply = isHindi ? `गणना का परिणाम है: ${result}।` : `The calculated result is ${result}.`;
                 } catch(e) {
-                    reply = "I could not evaluate that mathematical expression.";
+                    reply = isHindi ? "मैं इस गणितीय समीकरण की गणना नहीं कर पाया।" : "I could not evaluate that mathematical expression.";
                 }
             }
 
-            // 11. JOKES
-            else if (clean.includes("joke") || clean.includes("make me laugh")) {
-                const jokes = [
+            // 11. JOKES (Bilingual)
+            else if (clean.includes("joke") || clean.includes("make me laugh") || clean.includes("चुटकुला") || clean.includes("हंसाओ") || clean.includes("जोक")) {
+                const jokesEn = [
                     "Why do programmers prefer dark mode? Because light attracts bugs!",
                     "There are 10 types of people in the world: those who understand binary, and those who don't.",
                     "Why did the developer go broke? Because he used up all his cache!",
                     "An optimist says the glass is half full. A pessimist says it's half empty. A programmer says the glass is twice as large as necessary."
                 ];
-                reply = jokes[Math.floor(Math.random() * jokes.length)];
+                const jokesHi = [
+                    "टीचर ने पूछा: बताओ बिजली कहाँ से आती है? संजू बोला: मामा के घर से! टीचर: वो कैसे? संजू: जब भी बिजली जाती है, पापा कहते हैं - काट दी सा** ने!",
+                    "प्रोग्रामर डॉक्टर के पास गया: डॉक्टर साहब, मुझे नींद नहीं आ रही। डॉक्टर: एक बार सिस्टम रीस्टार्ट करके देखो!",
+                    "संता ने गूगल को चैलेंज किया: कुछ ऐसा ढूंढ कर दिखा जो मेरी बीवी ने छुपाया हो!"
+                ];
+                const chosenList = isHindi ? jokesHi : jokesEn;
+                reply = chosenList[Math.floor(Math.random() * chosenList.length)];
             }
 
             // 12. FACE SCAN
-            else if (clean.includes("face") || clean.includes("scan") || clean.includes("biometric")) {
+            else if (clean.includes("face") || clean.includes("scan") || clean.includes("biometric") || clean.includes("चेहरा") || clean.includes("फेस स्कैन")) {
                 startFaceScan();
-                reply = `Initiating facial biometric scan.`;
+                reply = isHindi ? "बायोमेट्रिक फेशियल स्कैन शुरू किया जा रहा है।" : "Initiating facial biometric scan.";
             }
 
             // 13. WIKIPEDIA KNOWLEDGE LOOKUP
-            else if (clean.startsWith("who is ") || clean.startsWith("what is ") || clean.startsWith("tell me about ") || clean.startsWith("explain ")) {
-                const cleanTerm = clean.replace(/^(who is|what is|tell me about|explain)\s+/, "").trim();
+            else if (clean.startsWith("who is ") || clean.startsWith("what is ") || clean.startsWith("tell me about ") || 
+                     clean.startsWith("explain ") || clean.includes("क्या है") || clean.includes("कौन है") || clean.includes("के बारे में बताओ")) {
+                const cleanTerm = clean.replace(/^(who is|what is|tell me about|explain)\s+/, "")
+                                       .replace(/(क्या है|कौन है|के बारे में बताओ)$/, "").trim();
                 try {
                     const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanTerm)}`);
                     if (wikiRes.ok) {
@@ -1088,28 +1138,29 @@
                             const sentences = wikiData.extract.split(". ").slice(0, 2).join(". ");
                             reply = `${sentences}.`;
                         } else {
-                            reply = `Here is what I found on Wikipedia about ${cleanTerm}.`;
+                            reply = isHindi ? `यहाँ विकिपीडिया से जानकारी है: ${cleanTerm}।` : `Here is what I found on Wikipedia about ${cleanTerm}.`;
                         }
                     } else {
-                        reply = `I could not find a specific Wikipedia page for ${cleanTerm}.`;
+                        reply = isHindi ? `मुझे '${cleanTerm}' के बारे में विकिपीडिया पेज नहीं मिला।` : `I could not find a specific Wikipedia page for ${cleanTerm}.`;
                     }
                 } catch(e) {
-                    reply = `Processed inquiry on ${cleanTerm}.`;
+                    reply = isHindi ? `'${cleanTerm}' की जानकारी खोजी गई।` : `Processed inquiry on ${cleanTerm}.`;
                 }
             }
 
-            // 14. CONVERSATIONAL DIALOGUE
+            // 14. CONVERSATIONAL DIALOGUE & GREETINGS
             else {
-                if (clean.includes("hello") || clean.includes("hi") || clean.includes("hey")) {
-                    reply = `Greetings, Boss! All systems are online and ready for your commands.`;
-                } else if (clean.includes("how are you")) {
-                    reply = `I am running at optimal capacity, Boss! How can I assist you today?`;
-                } else if (clean.includes("who are you") || clean.includes("what is your name")) {
-                    reply = `I am J.A.R.V.I.S., your Just A Rather Very Intelligent System. Always at your service, Boss.`;
-                } else if (clean.includes("thank you") || clean.includes("thanks")) {
-                    reply = `You are very welcome, Boss! Let me know if you need anything else.`;
-                } else if (clean.includes("what can you do") || clean.includes("help")) {
-                    reply = `I can play any song on YouTube, open Google, tell time and weather, calculate numbers, answer Wikipedia queries, and manage smart home controls!`;
+                if (clean.includes("hello") || clean.includes("hi") || clean.includes("hey") || 
+                    clean.includes("नमस्ते") || clean.includes("प्रणाम") || clean.includes("हेलो") || clean.includes("namaste")) {
+                    reply = isHindi ? "नमस्ते, बॉस! जार्विस पूरी तरह सक्रिय है। आज मैं आपकी क्या सेवा करूँ?" : "Greetings, Boss! All systems are online and ready for your commands.";
+                } else if (clean.includes("how are you") || clean.includes("तुम कैसे हो") || clean.includes("आप कैसे हैं") || clean.includes("kaise ho") || clean.includes("kya haal")) {
+                    reply = isHindi ? "मैं बिल्कुल ठीक और 100% क्षमता पर काम कर रहा हूँ, बॉस! आप कैसे हैं?" : "I am running at optimal capacity, Boss! How can I assist you today?";
+                } else if (clean.includes("who are you") || clean.includes("what is your name") || clean.includes("तुम कौन हो") || clean.includes("तुम्हारा नाम क्या है") || clean.includes("tum kaun ho")) {
+                    reply = isHindi ? "मैं जार्विस (JARVIS) हूँ — आपका जस्ट ए रादर वेरी इंटेलिजेंट सिस्टम। हमेशा आपकी सेवा में तत्पर, बॉस।" : "I am J.A.R.V.I.S., your Just A Rather Very Intelligent System. Always at your service, Boss.";
+                } else if (clean.includes("thank you") || clean.includes("thanks") || clean.includes("धन्यवाद") || clean.includes("शुक्रिया") || clean.includes("shukriya")) {
+                    reply = isHindi ? "आपका बहुत-बहुत स्वागत है, बॉस! मुझे बताएं अगर कोई और काम हो।" : "You are very welcome, Boss! Let me know if you need anything else.";
+                } else if (clean.includes("what can you do") || clean.includes("help") || clean.includes("तुम क्या कर सकते हो") || clean.includes("मदद") || clean.includes("kya kar sakte ho")) {
+                    reply = isHindi ? "मैं यूट्यूब पर गाने बजा सकता हूँ, गूगल पर कुछ भी सर्च कर सकता हूँ, मौसम और समय बता सकता हूँ, और स्मार्ट होम डिवाइस कंट्रोल कर सकता हूँ!" : "I can play any song on YouTube, open Google, tell time and weather, calculate numbers, answer Wikipedia queries, and manage smart home controls!";
                 } else {
                     try {
                         const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`);
@@ -1122,7 +1173,9 @@
                     } catch(e) {}
 
                     if (!reply) {
-                        reply = `I heard: "${rawQuery}". Say "Play Bhojpuri song", "Open Google", "Weather", or ask any question.`;
+                        reply = isHindi ? 
+                            `मैंने सुना: "${rawQuery}"। आप कह सकते हैं: "गाना बजाओ", "गूगल खोलो", "मौसम कैसा है", या "लाइट जलाओ"।` : 
+                            `I heard: "${rawQuery}". Say "Play Bhojpuri song", "Open Google", "Weather", or ask any question.`;
                     }
                 }
             }

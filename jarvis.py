@@ -76,6 +76,7 @@ DEFAULT_MEMORY = {
     "user_name": "Boss",
     "assistant_name": "Jarvis",
     "city": "Delhi",
+    "language": "auto",  # "auto", "hi-in", "en-in"
     "voice_rate": 175,
     "gemini_api_key": "",
     "wake_word_enabled": True,
@@ -169,7 +170,7 @@ class MemoryManager:
 #                             TEXT-TO-SPEECH ENGINE
 # =============================================================================
 class VoiceEngine:
-    """Thread-safe text-to-speech speaker using pyttsx3."""
+    """Thread-safe text-to-speech speaker using pyttsx3 with SAPI fallback."""
     def __init__(self, rate=175):
         self.queue = queue.Queue()
         self.rate = rate
@@ -182,20 +183,39 @@ class VoiceEngine:
         self.gui_callback = callback
 
     def _speech_worker(self):
-        # Initialize pyttsx3 within its dedicated thread to avoid COM apartment issues
+        engine = None
+        sapi_voice = None
+        try:
+            import pythoncom
+            pythoncom.CoInitialize()
+        except Exception:
+            pass
+
+        # Try pyttsx3 init
         try:
             engine = pyttsx3.init("sapi5")
         except Exception:
-            engine = pyttsx3.init()
+            try:
+                engine = pyttsx3.init()
+            except Exception:
+                engine = None
 
-        voices = engine.getProperty("voices")
-        # Try to select a natural voice (prefer female/male assistant voice)
-        if len(voices) > 1:
-            engine.setProperty("voice", voices[1].id)
-        elif len(voices) > 0:
-            engine.setProperty("voice", voices[0].id)
-
-        engine.setProperty("rate", self.rate)
+        if engine is not None:
+            try:
+                voices = engine.getProperty("voices")
+                if len(voices) > 1:
+                    engine.setProperty("voice", voices[1].id)
+                elif len(voices) > 0:
+                    engine.setProperty("voice", voices[0].id)
+                engine.setProperty("rate", self.rate)
+            except Exception:
+                pass
+        else:
+            try:
+                import win32com.client
+                sapi_voice = win32com.client.Dispatch("SAPI.SpVoice")
+            except Exception:
+                sapi_voice = None
 
         while True:
             text = self.queue.get()
@@ -207,10 +227,15 @@ class VoiceEngine:
                 self.gui_callback("speaking", text)
 
             try:
-                engine.say(text)
-                engine.runAndWait()
+                if engine is not None:
+                    engine.say(text)
+                    engine.runAndWait()
+                elif sapi_voice is not None:
+                    sapi_voice.Speak(text)
+                else:
+                    time.sleep(min(2.5, max(0.8, len(text) * 0.04)))
             except Exception as e:
-                print(f"[Voice Error] {e}")
+                print(f"[Voice Output Note] {e}")
             finally:
                 self.is_speaking = False
                 if self.gui_callback:
@@ -321,17 +346,31 @@ class ConversationalBrain:
             except Exception:
                 pass
 
-        # Simple math evaluation
-        math_match = re.search(r"(?:calculate|what is|how much is)\s+([0-9\+\-\*\/\.\s\(\)\^]+)", q)
-        if math_match:
-            expr = math_match.group(1).replace("^", "**")
-            try:
-                # Safe eval of numbers and basic operators
-                if all(c in "0123456789+-*/. ()" for c in expr):
-                    ans = eval(expr)
-                    return f"The calculated result is {ans}."
-            except Exception:
-                pass
+        # Simple math evaluation (Bilingual: English + Hindi)
+        math_words = ["calculate", "how much is", "what is", "plus", "minus", "into", "times", "divided by", "divide by", "multiplied by",
+                      "हिसाब", "गणना", "जोड़ो", "जोड़", "घटाओ", "घटाव", "गुणा", "गुना", "भाग"]
+        if any(w in q for w in math_words) or re.search(r"\d+\s*[\+\-\*\/xX]\s*\d+", q):
+            expr_str = f" {q} "
+            for prefix in ["calculate", "how much is", "what is", "हिसाब करो", "गणना करो", "बताओ", "how much"]:
+                expr_str = expr_str.replace(prefix, "")
+            replacements = {
+                " into ": " * ", " times ": " * ", " x ": " * ", " multiply by ": " * ", " multiplied by ": " * ", " guna ": " * ", " गुना ": " * ", " गुणा ": " * ",
+                " divided by ": " / ", " divide by ": " / ", " bhag ": " / ", " भाग ": " / ", " बटा ": " / ",
+                " plus ": " + ", " and ": " + ", " add ": " + ", " jodo ": " + ", " जोड़ ": " + ", " धन ": " + ",
+                " minus ": " - ", " ghatao ": " - ", " subtract ": " - ", " घटाव ": " - ", " घटाओ ": " - ", " ऋण ": " - "
+            }
+            for k, v in replacements.items():
+                expr_str = expr_str.replace(k, v)
+            expr_cleaned = re.sub(r"[^0-9\+\-\*\/\.\(\)]", "", expr_str)
+            if expr_cleaned and any(c.isdigit() for c in expr_cleaned) and any(op in expr_cleaned for op in "+-*/"):
+                try:
+                    ans = eval(expr_cleaned)
+                    if isinstance(ans, float) and ans.is_integer():
+                        ans = int(ans)
+                    is_hi = bool(re.search(r"[\u0900-\u097F]", query)) or any(w in q for w in ["hisaab", "guna", "jodo"])
+                    return f"गणना का परिणाम {ans} है।" if is_hi else f"The calculated result is {ans}."
+                except Exception:
+                    pass
 
         # General Wikipedia lookup
         try:
@@ -506,12 +545,13 @@ class JarvisBrain:
         self.voice.speak(reply)
         return reply
 
-    # ------------------ SMART HOME / IOT CONTROL ------------------
+    # ------------------ SMART HOME / IOT CONTROL (EN + HI) ------------------
     def control_smart_device(self, query):
         q = query.lower()
         devices = self.memory.get("smart_devices", {})
         matched_device = None
         action = "toggled"
+        is_hi = bool(re.search(r"[\u0900-\u097F]", query)) or any(w in q for w in ["chalu", "band", "jalao", "kholo", "bujhao"])
 
         for dev_name in devices.keys():
             if dev_name in q:
@@ -519,49 +559,60 @@ class JarvisBrain:
                 break
 
         if not matched_device:
-            if "lights" in q or "light" in q:
+            if any(w in q for w in ["lights", "light", "लाइट", "बल्ब"]):
                 matched_device = "living room light"
-            elif "ac" in q or "air conditioner" in q:
+            elif any(w in q for w in ["ac", "air conditioner", "एसी"]):
                 matched_device = "air conditioner"
-            elif "door" in q or "lock" in q:
+            elif any(w in q for w in ["door", "lock", "दरवाजा", "ताला"]):
                 matched_device = "main door lock"
-            elif "fan" in q:
+            elif any(w in q for w in ["fan", "पंखा"]):
                 matched_device = "smart fan"
 
         if matched_device:
             dev_info = devices.get(matched_device, {})
-            if "on" in q:
+            if any(w in q for w in ["on", "जलाओ", "चालू", "chalu", "ऑन"]):
                 dev_info["state"] = "on"
-                action = "turned ON"
-            elif "off" in q:
+                action = "चालू (ON) कर दी गई है" if is_hi else "turned ON"
+            elif any(w in q for w in ["off", "बंद", "बुझाओ", "band", "ऑफ"]):
                 dev_info["state"] = "off"
-                action = "turned OFF"
-            elif "lock" in q:
-                dev_info["state"] = "locked"
-                action = "LOCKED"
-            elif "unlock" in q:
+                action = "बंद (OFF) कर दी गई है" if is_hi else "turned OFF"
+            elif any(w in q for w in ["unlock", "खोलो", "अनलॉक", "kholo"]):
                 dev_info["state"] = "unlocked"
-                action = "UNLOCKED"
+                action = "अनलॉक (UNLOCKED) कर दिया गया है" if is_hi else "UNLOCKED"
+            elif any(w in q for w in ["lock", "लॉक"]):
+                dev_info["state"] = "locked"
+                action = "लॉक (LOCKED) कर दिया गया है" if is_hi else "LOCKED"
             elif "temp" in q or "degree" in q:
                 temp_match = re.search(r"(\d+)\s*(?:degree|deg)?", q)
                 if temp_match:
                     dev_info["temp"] = int(temp_match.group(1))
                     dev_info["state"] = "on"
-                    action = f"set to {dev_info['temp']} degrees Celsius"
+                    action = f"{dev_info['temp']} डिग्री पर सेट कर दिया गया है" if is_hi else f"set to {dev_info['temp']} degrees Celsius"
             else:
-                # Toggle
                 current_state = dev_info.get("state", "off")
                 new_state = "off" if current_state in ["on", "unlocked"] else "on"
                 dev_info["state"] = new_state
-                action = f"switched {new_state.upper()}"
+                action = f"{'बंद' if new_state == 'off' else 'चालू'} कर दिया गया है" if is_hi else f"switched {new_state.upper()}"
 
             devices[matched_device] = dev_info
             self.memory.set("smart_devices", devices)
-            reply = f"{matched_device.title()} has been {action}."
+
+            dev_display = matched_device.title()
+            if is_hi:
+                hi_names = {
+                    "living room light": "लिविंग रूम की लाइट",
+                    "bedroom light": "बेडरूम की लाइट",
+                    "air conditioner": "एयर कंडीशनर",
+                    "main door lock": "मुख्य दरवाजा",
+                    "smart fan": "स्मार्ट पंखा"
+                }
+                dev_display = hi_names.get(matched_device, dev_display)
+                reply = f"{dev_display} {action}।"
+            else:
+                reply = f"{dev_display} has been {action}."
         else:
-            # List available devices
             dev_list = ", ".join([f"{k} ({v.get('state', 'unknown')})" for k, v in devices.items()])
-            reply = f"Smart devices connected: {dev_list}."
+            reply = f"उपलब्ध स्मार्ट उपकरण: {dev_list}।" if is_hi else f"Smart devices connected: {dev_list}."
 
         self.voice.speak(reply)
         return reply
@@ -764,135 +815,273 @@ class JarvisBrain:
         self.voice.speak(reply)
         return reply
 
-    # ------------------ MAIN COMMAND DISPATCHER ------------------
+    def is_hindi(self, text):
+        """Detects whether user query is in Hindi (Devanagari or common Hinglish words)."""
+        if not text:
+            return False
+        if re.search(r"[\u0900-\u097F]", text):
+            return True
+        hinglish_words = [
+            "kholo", "chalu", "band", "batao", "kya", "hai", "samay", "mausam", "aaj",
+            "gana", "bajao", "geet", "sunao", "tarikh", "kaun", "kaise", "namaste", "pranam",
+            "karo", "dikhao", "likho", "awaaz", "badhao", "shukriya", "dhanyawad"
+        ]
+        return any(re.search(rf"\b{w}\b", text.lower()) for w in hinglish_words)
+
+    # ------------------ MAIN COMMAND DISPATCHER (EN + HI) ------------------
     def process_command(self, query):
         q = query.lower().strip()
         if not q or q == "none":
             return ""
 
         print(f"[Command Received]: {query}")
+        is_hi = self.is_hindi(query)
         reply = ""
+        user_name = self.memory.get("user_name", "Boss")
 
-        # 1. TIME & DATE
-        if "what time is it" in q or "current time" in q or "tell me the time" in q or q == "time":
-            reply = self.tell_time()
-        elif "today's date" in q or "current date" in q or "what is the date" in q or q == "date":
-            reply = self.tell_date()
+        # 1. GREETINGS & CASUAL TALK
+        if any(w in q for w in ["hello", "hi", "hey", "namaste", "pranam", "नमस्ते", "प्रणाम", "हेलो", "सुप्रभात"]):
+            reply = f"नमस्ते {user_name}! जार्विस पूरी तरह सक्रिय है। आज मैं आपकी क्या मदद करूँ?" if is_hi else f"Greetings, {user_name}! All systems are online and ready for your commands."
+            self.voice.speak(reply)
+            self.ai.add_to_history(query, reply)
+            return reply
 
-        # 2. DAILY BRIEFING
-        elif "briefing" in q or "daily update" in q or "morning update" in q:
+        elif any(w in q for w in ["how are you", "तुम कैसे हो", "आप कैसे हैं", "kaise ho", "kya haal"]):
+            reply = f"मैं बिल्कुल ठीक और 100% कार्यकुशलता पर सक्रिय हूँ, {user_name}! आपका दिन कैसा चल रहा है?" if is_hi else f"I am running at optimal capacity, {user_name}! How can I assist you today?"
+            self.voice.speak(reply)
+            self.ai.add_to_history(query, reply)
+            return reply
+
+        elif any(w in q for w in ["who are you", "what is your name", "तुम कौन हो", "तुम्हारा नाम क्या है", "tum kaun ho", "naam kya hai"]):
+            reply = "मैं जार्विस (JARVIS) हूँ — आपका इंटेलिजेंट पर्सनल वॉइस असिस्टेंट। हमेशा आपकी सेवा में तत्पर, बॉस।" if is_hi else "I am J.A.R.V.I.S., your Just A Rather Very Intelligent System. Always at your service, Boss."
+            self.voice.speak(reply)
+            self.ai.add_to_history(query, reply)
+            return reply
+
+        elif any(w in q for w in ["thank you", "thanks", "धन्यवाद", "शुक्रिया", "shukriya", "dhanyawad"]):
+            reply = f"आपका बहुत-बहुत स्वागत है, {user_name}! कोई और सहायता चाहिए तो बताएं।" if is_hi else f"You are very welcome, {user_name}! Let me know if you need anything else."
+            self.voice.speak(reply)
+            self.ai.add_to_history(query, reply)
+            return reply
+
+        elif any(w in q for w in ["what can you do", "help", "तुम क्या कर सकते हो", "मदद", "kya kar sakte ho"]):
+            reply = "मैं यूट्यूब पर गाने बजा सकता हूँ, गूगल पर खोज सकता हूँ, समय और मौसम बता सकता हूँ, और आपके कंप्यूटर व स्मार्ट होम को कंट्रोल कर सकता हूँ।" if is_hi else "I can play music on YouTube, search Google, tell time and weather, launch desktop apps, and manage your smart home!"
+            self.voice.speak(reply)
+            self.ai.add_to_history(query, reply)
+            return reply
+
+        # 2. TIME & DATE
+        elif any(w in q for w in ["what time is it", "current time", "tell me the time", "time", "समय", "टाइम", "कितने बजे", "samay", "kitne baje"]):
+            if is_hi:
+                now = datetime.datetime.now()
+                reply = f"अभी समय {now.strftime('%I:%M %p')} है।"
+                self.voice.speak(reply)
+            else:
+                reply = self.tell_time()
+
+        elif any(w in q for w in ["today's date", "current date", "what is the date", "date", "तारीख", "दिनांक", "आज कौन सा दिन", "tarikh", "aaj kaun sa din"]):
+            if is_hi:
+                now = datetime.datetime.now()
+                reply = f"आज {now.strftime('%A, %d %B %Y')} है।"
+                self.voice.speak(reply)
+            else:
+                reply = self.tell_date()
+
+        # 3. DAILY BRIEFING
+        elif any(w in q for w in ["briefing", "daily update", "morning update", "अपडेट", "हालचाल"]):
             reply = self.daily_briefing()
 
-        # 3. OPEN APPLICATIONS
-        elif q.startswith("open ") or q.startswith("launch "):
-            app_name = q.replace("open ", "").replace("launch ", "").strip()
-            # If asking to open web pages directly
-            if "google" in app_name and len(app_name.split()) == 1:
-                webbrowser.open("https://www.google.com")
-                reply = "Opening Google in browser."
-                self.voice.speak(reply)
-            elif "youtube" in app_name and len(app_name.split()) == 1:
-                webbrowser.open("https://www.youtube.com")
-                reply = "Opening YouTube."
-                self.voice.speak(reply)
-            elif "gmail" in app_name:
-                webbrowser.open("https://mail.google.com")
-                reply = "Opening Gmail."
-                self.voice.speak(reply)
-            else:
-                reply = self.open_application(app_name)
-
-        # 4. SEARCH GOOGLE USING VOICE
-        elif "search google" in q or "google search" in q or q.startswith("search for ") or q.startswith("google "):
-            reply = self.search_google(q)
-
-        # 5. PLAY MUSIC
-        elif "play music" in q or "play song" in q or q.startswith("play "):
-            reply = self.play_music(q)
-
-        # 6. WEATHER INFORMATION
-        elif "weather" in q or "temperature" in q:
-            city_match = re.search(r"weather\s+(?:in|of|at)?\s*([a-zA-Z\s]+)", q)
-            if city_match and city_match.group(1).strip() not in ["", "today", "now"]:
-                reply = self.get_weather(city_match.group(1).strip())
-            else:
-                reply = self.get_weather()
-
-        # 7. USER PREFERENCES & MEMORY
-        elif any(phrase in q for phrase in ["who is your boss", "who is you boss", "who is the boss", "who is your master"]):
-            reply = "You are my boss! I am programmed to obey your every command."
+        # 4. JOKES & HUMOR (BILINGUAL)
+        elif any(w in q for w in ["joke", "chutkula", "jokes", "चुटकुला", "जोक", "हंसाओ"]):
+            hindi_jokes = [
+                "टीचर: अगर तुम्हारा सबसे अच्छा दोस्त और 5 लाख रुपए एक साथ गिर रहे हों, तो तुम किसे बचाओगे? छात्र: 5 लाख रुपए! क्योंकि दोस्त तो पैसे देखकर खुद ही आ जाएगा!",
+                "पप्पू डॉक्टर के पास गया: डॉक्टर साहब, मुझे नींद में चलने की बीमारी है। डॉक्टर: तो रात को ताला लगा लिया करो! पप्पू: ताला तो लगा लेता हूँ, पर चाबी भी तो मेरे पास ही रहती है!",
+                "टीचर: संता, बताओ पानी में रहने वाले 3 जीवों के नाम! संता: मेंढक! टीचर: बहुत अच्छे, बाकी दो? संता: उसकी मम्मी और उसके पापा!",
+                "प्रोग्रामर डॉक्टर के पास गया: डॉक्टर साहब, मुझे नींद नहीं आ रही। डॉक्टर: एक बार सिस्टम रीस्टार्ट करके देखो!"
+            ]
+            english_jokes = [
+                "Why don't scientists trust atoms? Because they make up everything!",
+                "Why did the computer show up at work late? It had a hard drive!",
+                "There are only 10 types of people in the world: those who understand binary, and those who don't.",
+                "Why do programmers prefer dark mode? Because light attracts bugs!"
+            ]
+            import random
+            reply = random.choice(hindi_jokes) if is_hi else random.choice(english_jokes)
             self.voice.speak(reply)
-        elif any(phrase in q for phrase in ["who created you", "who made you", "who developed you", "who built you"]):
-            reply = "I was created and developed as an advanced AI voice assistant project."
-            self.voice.speak(reply)
-        elif q.startswith("remember that ") or q.startswith("remember "):
-            reply = self.remember_fact(q)
-        elif "what do you remember" in q or "recall memory" in q or "show facts" in q:
-            reply = self.recall_facts()
-        elif "call me " in q or "my name is " in q:
-            name_match = re.search(r"(?:call me|my name is)\s+([a-zA-Z0-9\s]+)", q)
-            if name_match:
-                new_name = name_match.group(1).strip().title()
-                self.memory.set("user_name", new_name)
-                reply = f"Understood. I will refer to you as {new_name} from now on."
-                self.voice.speak(reply)
-        elif "who am i" in q or "what is my name" in q:
-            user_name = self.memory.get("user_name", "Boss")
-            reply = f"You are {user_name}, the authorized administrator of this system."
+            self.ai.add_to_history(query, reply)
+            return reply
+
+        # 5. PLAY MUSIC & YOUTUBE SONGS (BILINGUAL)
+        elif not any(w in q for w in ["joke", "चुटकुला", "जोक"]) and any(w in q for w in ["play music", "play song", "play ", "गाना", "गीत", "म्यूजिक", "बजाओ", "चलाओ", "सुनाओ", "gana", "bajao", "chalao"]):
+            clean_song = re.sub(r"^(कृपया\s+)?(मुझे\s+)?(कोई\s+)?(गाना\s+)?(बजाओ\s+|चलाओ\s+|सुनाओ\s+)?(please\s+)?(play\s+music|play\s+song|play)?\s*", "", q, flags=re.IGNORECASE).strip()
+            clean_song = re.sub(r"\s+(on youtube|यूट्यूब पर|यूट्यूब पे|सुनाओ|बजाओ|चलाओ|का गाना|गाना)$", "", clean_song, flags=re.IGNORECASE).strip()
+            
+            if not clean_song or clean_song in ["play", "music", "song", "गाना", "गीत", "gana"]:
+                clean_song = "bhojpuri hit songs" if is_hi else self.memory.get("preferences", {}).get("favorite_music", "Iron Man AC/DC")
+            
+            url = f"https://www.youtube.com/results?search_query={requests.utils.quote(clean_song)}"
+            webbrowser.open(url)
+            reply = f"यूट्यूब पर '{clean_song}' बजा रहा हूँ, {user_name}।" if is_hi else f"Playing '{clean_song}' on YouTube for you, {user_name}."
             self.voice.speak(reply)
 
-        # 8. SEND EMAILS
-        elif "send email" in q or "draft email" in q or "mail" in q:
-            reply = self.send_email_draft()
+        # 5. YOUTUBE & GOOGLE OPEN / SEARCH
+        elif any(w in q for w in ["open youtube", "launch youtube", "यूट्यूब खोलो", "यूट्यूब चलाओ", "youtube kholo"]):
+            webbrowser.open("https://www.youtube.com")
+            reply = f"यूट्यूब खोल रहा हूँ, {user_name}।" if is_hi else "Opening YouTube."
+            self.voice.speak(reply)
 
-        # 9. CONTROL SMART DEVICES
-        elif any(w in q for w in ["light", "lights", "fan", "ac", "air conditioner", "thermostat", "door", "lock device"]):
+        elif any(w in q for w in ["open google", "गूगल खोलो", "google kholo"]):
+            webbrowser.open("https://www.google.com")
+            reply = f"गूगल खोल रहा हूँ, {user_name}।" if is_hi else "Opening Google in browser."
+            self.voice.speak(reply)
+
+        elif any(w in q for w in ["search google", "google search", "search for ", "गूगल पर सर्च", "सर्च करो", "खोजो", "ढूंढो", "search karo"]):
+            clean_q = re.sub(r"^(search google for|google search|search for|search|गूगल पर सर्च करो|गूगल पर खोजो|सर्च करो|खोजो|ढूंढो)\s*", "", q, flags=re.IGNORECASE).strip()
+            clean_q = re.sub(r"\s+(सर्च करो|खोजो|ढूंढो)$", "", clean_q, flags=re.IGNORECASE).strip()
+            url = f"https://www.google.com/search?q={requests.utils.quote(clean_q)}"
+            webbrowser.open(url)
+            reply = f"गूगल पर '{clean_q}' खोज रहा हूँ।" if is_hi else f"Searching Google for {clean_q}."
+            self.voice.speak(reply)
+
+        # 6. SMART HOME CONTROL (BILINGUAL) - Handled before app launcher so "लाइट चालू करो" is not confused with apps
+        elif any(w in q for w in ["light", "lights", "fan", "ac", "air conditioner", "door", "lock", "लाइट", "पंखा", "एसी", "दरवाजा", "ताला"]):
             reply = self.control_smart_device(q)
 
-        # 10. PRODUCTIVITY: TO-DO & NOTES
-        elif q.startswith("add to-do") or q.startswith("add todo") or q.startswith("add task"):
-            reply = self.add_todo(q)
-        elif "show to-do" in q or "show todo" in q or "my tasks" in q or "list tasks" in q:
-            reply = self.show_todos()
-        elif "clear to-do" in q or "clear todo" in q or "clear tasks" in q:
-            self.memory.clear_todos()
-            reply = "To-do list has been cleared."
+        # 7. OPEN APPLICATIONS (BILINGUAL APP MAPPINGS)
+        elif (q.startswith("open ") or q.startswith("launch ") or any(k in q for k in ["खोलो", "चालू करो", "kholo", "chalu karo"])):
+            app_lower = q.replace("open ", "").replace("launch ", "").replace("खोलो", "").replace("चालू करो", "").replace("kholo", "").strip()
+            if "notepad" in app_lower or "नोटपैड" in app_lower:
+                reply = self.open_application("notepad")
+            elif "calculator" in app_lower or "calc" in app_lower or "कैलकुलेटर" in app_lower:
+                reply = self.open_application("calculator")
+            elif "paint" in app_lower or "पेंट" in app_lower:
+                reply = self.open_application("paint")
+            elif "chrome" in app_lower or "क्रोम" in app_lower:
+                reply = self.open_application("chrome")
+            elif "whatsapp" in app_lower or "व्हाट्सएप" in app_lower:
+                webbrowser.open("https://web.whatsapp.com")
+                reply = "व्हाट्सएप वेब खोल रहा हूँ।" if is_hi else "Opening WhatsApp Web."
+                self.voice.speak(reply)
+            elif "gmail" in app_lower or "जीमेल" in app_lower or "ईमेल" in app_lower:
+                webbrowser.open("https://mail.google.com")
+                reply = "जीमेल खोल रहा हूँ।" if is_hi else "Opening Gmail."
+                self.voice.speak(reply)
+            elif "terminal" in app_lower or "cmd" in app_lower or "कमांड प्रॉम्प्ट" in app_lower:
+                reply = self.open_application("cmd")
+            elif "task manager" in app_lower or "टास्क मैनेजर" in app_lower:
+                reply = self.open_application("task manager")
+            elif "vs code" in app_lower or "code" in app_lower or "वीएस कोड" in app_lower:
+                reply = self.open_application("code")
+            else:
+                reply = self.open_application(app_lower)
+
+        # 7. WEATHER INFORMATION
+        elif any(w in q for w in ["weather", "temperature", "मौसम", "तापमान", "बारिश", "mausam", "tapman"]):
+            city_match = re.search(r"(?:weather in|weather of|मौसम|तापमान)\s+([a-zA-Z\u0900-\u097F\s]+)", q)
+            target_city = None
+            if city_match:
+                candidate = city_match.group(1).replace("का", "").replace("में", "").replace("today", "").replace("now", "").strip()
+                if candidate:
+                    target_city = candidate
+            
+            target_city = target_city or self.memory.get("city", "Delhi")
+            try:
+                url = f"https://wttr.in/{requests.utils.quote(target_city)}?format=j1"
+                res = requests.get(url, timeout=5)
+                if res.status_code == 200:
+                    data = res.json()
+                    current = data["current_condition"][0]
+                    temp_c = current["temp_C"]
+                    desc = current["weatherDesc"][0]["value"]
+                    humidity = current["humidity"]
+                    reply = (f"{target_city.title()} में अभी मौसम {desc} है और तापमान {temp_c} डिग्री सेल्सियस है।" if is_hi else
+                             f"The weather in {target_city.title()} is currently {desc} with a temperature of {temp_c} degrees Celsius, humidity at {humidity}%.")
+                else:
+                    reply = "मौसम की जानकारी अभी उपलब्ध नहीं हो पा रही है।" if is_hi else f"Could not retrieve weather for {target_city}."
+            except Exception:
+                reply = "मौसम सेवा से संपर्क नहीं हो पा रहा है।" if is_hi else f"Unable to reach meteorological servers for {target_city}."
             self.voice.speak(reply)
-        elif q.startswith("take a note") or q.startswith("take note") or q.startswith("write note"):
+
+        # 8. USER PREFERENCES & IDENTITY
+        elif any(phrase in q for phrase in ["who is your boss", "who is the boss", "तुम्हारा बॉस कौन है", "तुम्हारा मालिक कौन है"]):
+            reply = f"आप मेरे बॉस हैं, {user_name}! मैं आपके हर आदेश का पालन करता हूँ।" if is_hi else f"You are my boss, {user_name}! I am programmed to obey your every command."
+            self.voice.speak(reply)
+        elif any(phrase in q for phrase in ["who created you", "who made you", "तुम्हें किसने बनाया", "तुम्हारा निर्माता कौन है"]):
+            reply = "मुझे आशुतोष, प्रणव, यासिर और ध्रुव ने कॉलेज मिनी प्रोजेक्ट के रूप में बनाया है।" if is_hi else "I was created and developed by Ashutosh, Pranav, Yasir, and Dhruv as an academic AI assistant."
+            self.voice.speak(reply)
+        elif q.startswith("remember that ") or q.startswith("remember ") or "याद रखो" in q:
+            reply = self.remember_fact(q)
+        elif "what do you remember" in q or "recall memory" in q or "क्या याद है" in q:
+            reply = self.recall_facts()
+        elif "call me " in q or "my name is " in q or "मेरा नाम " in q:
+            name_match = re.search(r"(?:call me|my name is|मेरा नाम)\s+([a-zA-Z0-9\u0900-\u097F\s]+)", q)
+            if name_match:
+                new_name = name_match.group(1).replace("है", "").strip().title()
+                self.memory.set("user_name", new_name)
+                reply = f"समझ गया। अब से मैं आपको {new_name} कहूँगा।" if is_hi else f"Understood. I will refer to you as {new_name} from now on."
+                self.voice.speak(reply)
+        elif "who am i" in q or "what is my name" in q or "मैं कौन हूँ" in q or "मेरा नाम क्या है" in q:
+            reply = f"आप {user_name} हैं, इस सिस्टम के अधिकृत बॉस!" if is_hi else f"You are {user_name}, the authorized administrator of this system."
+            self.voice.speak(reply)
+
+        # 9. SEND EMAILS
+        elif any(w in q for w in ["send email", "draft email", "mail", "ईमेल भेजो", "मेल भेजो"]):
+            reply = self.send_email_draft()
+
+        # 10. PRODUCTIVITY: TO-DO & NOTES
+        elif q.startswith("add to-do") or q.startswith("add todo") or "टास्क जोड़ो" in q or "काम जोड़ो" in q:
+            reply = self.add_todo(q)
+            if is_hi: reply = "कार्य आपकी टू-डू लिस्ट में जोड़ दिया गया है।"
+        elif "show to-do" in q or "show todo" in q or "टास्क दिखाओ" in q or "काम दिखाओ" in q:
+            reply = self.show_todos()
+        elif "clear to-do" in q or "clear todo" in q or "टास्क साफ करो" in q:
+            self.memory.clear_todos()
+            reply = "टू-डू लिस्ट साफ कर दी गई है।" if is_hi else "To-do list has been cleared."
+            self.voice.speak(reply)
+        elif q.startswith("take a note") or q.startswith("take note") or "नोट लिखो" in q or "नोट बनाओ" in q:
             reply = self.take_note(q)
-        elif "read notes" in q or "show notes" in q or "my notes" in q:
+            if is_hi: reply = "आपका नोट फाइल में सुरक्षित कर लिया गया है।"
+        elif "read notes" in q or "show notes" in q or "नोट्स दिखाओ" in q:
             reply = self.read_notes()
 
-        # 11. TASK & SYSTEM AUTOMATION
-        elif "screenshot" in q or "capture screen" in q:
+        # 12. TASK & SYSTEM AUTOMATION
+        elif any(w in q for w in ["screenshot", "capture screen", "स्क्रीनशॉट", "फोटो खींचो"]):
             reply = self.take_screenshot()
-        elif "lock pc" in q or "lock screen" in q or "lock workstation" in q:
+            if is_hi: reply = "स्क्रीनशॉट ले लिया गया है और सुरक्षित कर दिया गया है।"
+        elif any(w in q for w in ["lock pc", "lock screen", "lock workstation", "कंप्यूटर लॉक करो", "स्क्रीन लॉक करो"]):
             reply = self.lock_pc()
-        elif "volume up" in q or "increase volume" in q:
+            if is_hi: reply = "कंप्यूटर स्क्रीन लॉक की जा रही है।"
+        elif any(w in q for w in ["volume up", "increase volume", "आवाज़ बढ़ाओ", "वॉल्यूम बढ़ाओ"]):
             reply = self.change_volume("up")
-        elif "volume down" in q or "decrease volume" in q:
+            if is_hi: reply = "आवाज़ बढ़ा दी गई है।"
+        elif any(w in q for w in ["volume down", "decrease volume", "आवाज़ कम करो", "वॉल्यूम कम करो"]):
             reply = self.change_volume("down")
-        elif "mute" in q or "unmute" in q:
+            if is_hi: reply = "आवाज़ कम कर दी गई है।"
+        elif any(w in q for w in ["mute", "unmute", "म्यूट करो", "आवाज़ बंद करो"]):
             reply = self.change_volume("mute")
+            if is_hi: reply = "सिस्टम म्यूट कर दिया गया है।"
         elif "timer" in q or "alarm" in q:
             reply = self.set_timer(q)
 
-        # 12. FACE RECOGNITION
-        elif "face recognition" in q or "scan face" in q or "biometric" in q or "verify me" in q:
+        # 13. BIOMETRIC FACE RECOGNITION
+        elif any(w in q for w in ["face recognition", "scan face", "biometric", "verify me", "फेस स्कैन", "चेहरा पहचानो"]):
             reply = self.scan_face()
 
-        # 13. WIKIPEDIA SPECIFIC
-        elif "what is" in q or "who is" in q or "wikipedia" in q:
+        # 14. WIKIPEDIA GENERAL KNOWLEDGE
+        elif any(w in q for w in ["what is", "who is", "wikipedia", "क्या है", "कौन है", "के बारे में बताओ"]):
             try:
-                search_term = q.replace("wikipedia", "").replace("what is", "").replace("who is", "").strip()
+                search_term = q.replace("wikipedia", "").replace("what is", "").replace("who is", "").replace("क्या है", "").replace("कौन है", "").replace("के बारे में बताओ", "").strip()
+                if is_hi:
+                    wikipedia.set_lang("hi")
+                else:
+                    wikipedia.set_lang("en")
                 result = wikipedia.summary(search_term, sentences=2)
-                reply = f"According to Wikipedia: {result}"
+                reply = f"विकिपीडिया के अनुसार: {result}" if is_hi else f"According to Wikipedia: {result}"
                 self.voice.speak(reply)
             except Exception:
-                # Fallback to LLM / Conversational engine
                 pass
 
-        # 14. INTELLIGENT CONVERSATIONAL BRAIN (Gemini API or Contextual AI Engine)
+        # 15. INTELLIGENT CONVERSATIONAL BRAIN (Gemini API or Contextual Fallback)
         if not reply:
             llm_reply = self.ai.query_gemini(query)
             if llm_reply:
@@ -901,7 +1090,6 @@ class JarvisBrain:
                 reply = self.ai.query_contextual_fallback(query)
             self.voice.speak(reply)
 
-        # Record into conversation context history
         self.ai.add_to_history(query, reply)
         return reply
 
@@ -910,15 +1098,23 @@ class JarvisBrain:
 #                    WAKE-WORD & AUDIO LISTENER THREAD
 # =============================================================================
 class AudioListener:
-    """Handles audio capture, speech recognition, and wake-word detection."""
-    def __init__(self, memory_mgr, command_callback, status_callback):
+    """Handles audio capture, multi-lingual speech recognition, and wake-word detection."""
+    def __init__(self, memory_mgr, command_callback, status_callback, voice_engine=None):
         self.memory = memory_mgr
+        self.voice_engine = voice_engine
         self.on_command = command_callback
         self.on_status = status_callback
         self.recognizer = sr.Recognizer()
-        self.recognizer.pause_threshold = 0.8
-        self.recognizer.energy_threshold = 300
+        
+        # Optimized acoustic thresholds for sensitive speech pickup without premature cutoff
+        self.recognizer.pause_threshold = 1.3        # Allows natural pauses without cutting off
+        self.recognizer.non_speaking_duration = 0.5
+        self.recognizer.energy_threshold = 300       # High sensitivity floor
         self.recognizer.dynamic_energy_threshold = True
+        self.recognizer.dynamic_energy_ratio = 1.5
+        
+        self.language = self.memory.get("language", "auto")
+        self.calibrated = False
 
         self.running = True
         self.wake_active = True
@@ -930,62 +1126,135 @@ class AudioListener:
     def stop(self):
         self.running = False
 
+    def calibrate_microphone(self):
+        """Calibrates microphone energy threshold once at startup."""
+        if self.calibrated:
+            return
+        try:
+            with sr.Microphone() as source:
+                self.on_status("processing", "Calibrating mic for room acoustics...")
+                self.recognizer.adjust_for_ambient_noise(source, duration=1.0)
+                self.calibrated = True
+                print(f"[Mic Calibrated]: Ambient energy threshold set to {self.recognizer.energy_threshold:.1f}")
+        except Exception as e:
+            print(f"[Mic Calibration Warning]: {e}")
+
+    def recognize_audio(self, audio):
+        """Recognizes speech in Hindi, English, or Auto-Bilingual mode."""
+        lang_pref = (self.language or self.memory.get("language", "auto")).lower()
+
+        if lang_pref == "hi-in":
+            try:
+                return self.recognizer.recognize_google(audio, language="hi-in")
+            except sr.UnknownValueError:
+                return None
+        elif lang_pref == "en-in":
+            try:
+                return self.recognizer.recognize_google(audio, language="en-in")
+            except sr.UnknownValueError:
+                return None
+        else:
+            # AUTO / BILINGUAL MODE:
+            # Try Hindi first (since Hindi speakers often mix English words or pure Hindi)
+            try:
+                text_hi = self.recognizer.recognize_google(audio, language="hi-in")
+                if text_hi and len(text_hi.strip()) > 0:
+                    return text_hi
+            except sr.UnknownValueError:
+                pass
+            except Exception:
+                pass
+
+            # Fallback to Indian English
+            try:
+                text_en = self.recognizer.recognize_google(audio, language="en-in")
+                return text_en
+            except sr.UnknownValueError:
+                return None
+
     def listen_single_command(self):
         """Actively records one command immediately (e.g. when Mic button clicked)."""
         threading.Thread(target=self._capture_active_command, daemon=True).start()
 
     def _capture_active_command(self):
-        self.on_status("listening", "Listening for your command...")
+        # Echo suppression barrier
+        if self.voice_engine and self.voice_engine.is_speaking:
+            self.on_status("idle", "Waiting for assistant to finish speaking...")
+            return
+
+        self.on_status("listening", "Listening... बोलिए (Speak now)")
         try:
             with sr.Microphone() as source:
-                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                audio = self.recognizer.listen(source, timeout=6, phrase_time_limit=10)
+                if not self.calibrated:
+                    self.recognizer.adjust_for_ambient_noise(source, duration=0.4)
+                    self.calibrated = True
+                audio = self.recognizer.listen(source, timeout=7, phrase_time_limit=12)
 
-            self.on_status("processing", "Processing speech...")
-            query = self.recognizer.recognize_google(audio, language="en-in")
-            print(f"[Recognized]: {query}")
-            self.on_command(query)
+            self.on_status("processing", "Recognizing speech / आवाज़ पहचानी जा रही है...")
+            query = self.recognize_audio(audio)
+            if query:
+                print(f"[Recognized]: {query}")
+                self.on_command(query)
+            else:
+                self.on_status("idle", "Could not understand audio / आवाज़ समझ नहीं आई")
         except sr.WaitTimeoutError:
-            self.on_status("idle", "Ready")
+            self.on_status("idle", "Ready / तैयार")
         except sr.UnknownValueError:
-            self.on_status("idle", "Could not understand audio")
+            self.on_status("idle", "Could not understand audio / आवाज़ समझ नहीं आई")
         except Exception as e:
             print(f"[Active Listen Error] {e}")
-            self.on_status("idle", "Microphone inactive or offline")
+            self.on_status("idle", "Microphone offline / माइक उपलब्ध नहीं")
 
     def _listen_loop(self):
         """Continuous background loop for wake-word and hands-free control."""
+        self.calibrate_microphone()
+
+        wake_words = [
+            "hey jarvis", "jarvis", "wake up jarvis", "ok jarvis", "okay jarvis", 
+            "suno jarvis", "namaste jarvis", "जार्विस", "हे जार्विस", "सुनो जार्विस", "नमस्ते जार्विस", "ओके जार्विस"
+        ]
+
         while self.running:
+            # Echo suppression: do not listen while JARVIS is actively speaking
+            if self.voice_engine and self.voice_engine.is_speaking:
+                time.sleep(0.3)
+                continue
+
             if not self.memory.get("wake_word_enabled", True):
                 time.sleep(0.5)
                 continue
 
             try:
                 with sr.Microphone() as source:
-                    self.recognizer.adjust_for_ambient_noise(source, duration=0.3)
-                    # Ambient background listening for wake word
-                    audio = self.recognizer.listen(source, timeout=4, phrase_time_limit=4)
+                    audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=6)
 
-                phrase = self.recognizer.recognize_google(audio, language="en-in").lower()
-                print(f"[Ambient Heard]: {phrase}")
+                phrase = self.recognize_audio(audio)
+                if not phrase:
+                    continue
+
+                phrase_clean = phrase.lower()
+                print(f"[Ambient Heard]: {phrase_clean}")
 
                 # Check Wake Words
-                if any(w in phrase for w in ["hey jarvis", "jarvis", "wake up jarvis", "ok jarvis", "okay jarvis"]):
-                    self.on_status("listening", "Wake-word detected! Listening...")
-                    # Give audio feedback or prompt
+                if any(w in phrase_clean for w in wake_words):
+                    self.on_status("listening", "Wake-word detected! Listening... / जार्विस सक्रिय...")
+                    
                     with sr.Microphone() as cmd_source:
-                        cmd_audio = self.recognizer.listen(cmd_source, timeout=7, phrase_time_limit=12)
+                        cmd_audio = self.recognizer.listen(cmd_source, timeout=8, phrase_time_limit=14)
 
-                    self.on_status("processing", "Analyzing command...")
-                    cmd_query = self.recognizer.recognize_google(cmd_audio, language="en-in")
-                    self.on_command(cmd_query)
+                    self.on_status("processing", "Analyzing command / आदेश विश्लेषित हो रहा है...")
+                    cmd_query = self.recognize_audio(cmd_audio)
+                    if cmd_query:
+                        self.on_command(cmd_query)
+                    else:
+                        self.on_status("idle", "Ready / तैयार")
 
             except sr.WaitTimeoutError:
                 pass
             except sr.UnknownValueError:
                 pass
             except Exception as e:
-                time.sleep(1)
+                time.sleep(0.5)
 
 
 # =============================================================================
@@ -1042,8 +1311,22 @@ class JarvisDashboardGUI:
                              font=("Consolas", 14, "bold"), fg="#00f0ff", bg="#0d1527")
         title_lbl.pack(side=tk.LEFT, padx=20, pady=10)
 
+        # Language Switcher Button in Top Bar
+        current_lang = self.memory.get("language", "auto")
+        if current_lang == "hi-in":
+            lang_label = "🇮🇳 LANG: हिन्दी (hi-IN)"
+        elif current_lang == "en-in":
+            lang_label = "🇬🇧 LANG: English (en-IN)"
+        else:
+            lang_label = "🌐 LANG: AUTO (EN/HI)"
+
+        self.lang_btn = tk.Button(top_bar, text=lang_label, font=("Consolas", 9, "bold"),
+                                  bg="#162b47", fg="#00f0ff", activebackground="#00f0ff",
+                                  relief=tk.FLAT, padx=10, pady=4, command=self._toggle_language)
+        self.lang_btn.pack(side=tk.RIGHT, padx=15, pady=10)
+
         self.clock_lbl = tk.Label(top_bar, text="", font=("Consolas", 11), fg="#8baac9", bg="#0d1527")
-        self.clock_lbl.pack(side=tk.RIGHT, padx=20, pady=10)
+        self.clock_lbl.pack(side=tk.RIGHT, padx=10, pady=10)
         self._update_clock()
 
         # 2. Main Content Split Pane
@@ -1070,7 +1353,7 @@ class JarvisDashboardGUI:
         btn_frame = tk.Frame(left_col, bg="#0b111e")
         btn_frame.pack(fill=tk.X, padx=20, pady=10)
 
-        self.mic_btn = tk.Button(btn_frame, text="🎤 Speak Now", font=("Consolas", 10, "bold"),
+        self.mic_btn = tk.Button(btn_frame, text="🎤 Speak / बोलें", font=("Consolas", 10, "bold"),
                                  bg="#00f0ff", fg="#080c14", activebackground="#4facfe",
                                  relief=tk.FLAT, padx=10, pady=6, command=self._on_mic_click)
         self.mic_btn.grid(row=0, column=0, sticky="ew", padx=3, pady=3)
@@ -1175,6 +1458,27 @@ class JarvisDashboardGUI:
     def _on_mic_click(self):
         if hasattr(self, "listener"):
             self.listener.listen_single_command()
+
+    def _toggle_language(self):
+        curr = self.memory.get("language", "auto")
+        if curr == "auto":
+            nxt = "hi-in"
+            lbl = "🇮🇳 LANG: हिन्दी (hi-IN)"
+            msg = "Speech recognition set to Hindi (हिन्दी) mode."
+        elif curr == "hi-in":
+            nxt = "en-in"
+            lbl = "🇬🇧 LANG: English (en-IN)"
+            msg = "Speech recognition set to English (India) mode."
+        else:
+            nxt = "auto"
+            lbl = "🌐 LANG: AUTO (EN/HI)"
+            msg = "Speech recognition set to Auto Bilingual (English + Hindi) mode."
+
+        self.memory.set("language", nxt)
+        if hasattr(self, "listener") and self.listener:
+            self.listener.language = nxt
+        self.lang_btn.config(text=lbl)
+        self.log_message("SYSTEM", msg)
 
     def _submit_text_input(self):
         cmd = self.input_entry.get().strip()
@@ -1365,7 +1669,7 @@ def main():
     def on_listener_status(state, msg):
         dashboard.root.after(0, lambda: dashboard.update_status(state, msg))
 
-    listener = AudioListener(memory_mgr, on_voice_command, on_listener_status)
+    listener = AudioListener(memory_mgr, on_voice_command, on_listener_status, voice_engine=voice_engine)
     dashboard.listener = listener
     listener.start()
 
