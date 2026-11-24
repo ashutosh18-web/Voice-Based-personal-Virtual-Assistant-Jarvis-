@@ -389,7 +389,38 @@
         .badge-on { background: rgba(0, 255, 102, 0.2); color: var(--neon-green); border: 1px solid var(--neon-green); }
         .badge-off { background: rgba(255, 51, 102, 0.2); color: var(--neon-red); border: 1px solid var(--neon-red); }
 
-        /* Modal for Camera */
+        /* Gemini AI Button & Badges */
+        .gemini-header-btn {
+            background: rgba(22, 43, 71, 0.8);
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+            transition: all 0.2s ease;
+        }
+        .gemini-header-btn:hover {
+            background: var(--cyan);
+            color: var(--bg-dark);
+            box-shadow: 0 0 15px var(--cyan);
+        }
+        .gemini-badge-active {
+            color: #00ff88;
+            font-weight: 900;
+        }
+        .gemini-badge-setup {
+            color: #ffd166;
+            font-weight: 900;
+        }
+
+        /* Modal for Camera & Gemini */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -442,6 +473,9 @@
             <span class="badge-core">ONLINE v3.1</span>
         </div>
         <div class="header-meta">
+            <button id="geminiBtn" class="gemini-header-btn">
+                ⚡ NEURAL CORE: <span id="geminiStatusBadge" class="gemini-badge-setup">SETUP</span>
+            </button>
             <label for="langSelect" style="color: var(--text-dim); font-size: 0.8rem;">Language/भाषा:</label>
             <select id="langSelect" class="lang-select">
                 <option value="hi-IN" selected>🇮🇳 हिन्दी (Hindi - hi-IN)</option>
@@ -557,6 +591,47 @@
         </div>
     </div>
 
+    <!-- Neural Core Engine Configuration Modal -->
+    <div id="geminiModal" class="modal-overlay">
+        <div class="card" style="max-width: 500px; width: 100%; border: 2px solid var(--cyan); box-shadow: 0 0 35px rgba(0,240,255,0.45); text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glow); padding-bottom: 10px; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: var(--cyan); font-family: 'Orbitron', sans-serif; font-size: 1.1rem;">⚡ J.A.R.V.I.S. NEURAL CORE ENGINE</h3>
+                <button id="closeGeminiModal" style="background: transparent; border: none; color: var(--neon-red); font-size: 1.3rem; cursor: pointer; padding: 0 5px;">✕</button>
+            </div>
+            
+            <p style="color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; margin-bottom: 15px;">
+                Equip J.A.R.V.I.S. with proprietary deep neural reasoning. Solve coding problems, science, math, or conversational reasoning in fluent Hindi or English!
+            </p>
+
+            <div style="margin-bottom: 14px;">
+                <label style="display: block; color: var(--text-bright); font-size: 0.82rem; margin-bottom: 5px; font-weight: 700;">NEURAL ACCESS KEY:</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="password" id="geminiApiKeyInput" placeholder="Enter Core Authorization Key..." style="flex: 1; background: rgba(0,0,0,0.5); border: 1px solid var(--border-glow); color: var(--cyan); padding: 8px 12px; border-radius: 4px; font-family: 'Share Tech Mono', monospace; font-size: 0.9rem;">
+                    <button id="toggleGeminiKeyVis" style="background: rgba(22, 43, 71, 0.8); border: 1px solid var(--border-glow); color: var(--text-bright); padding: 0 12px; cursor: pointer; border-radius: 4px;">👁</button>
+                </div>
+                <div style="font-size: 0.78rem; color: var(--cyan); margin-top: 6px;">
+                    🔑 Engine Gateway: <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: var(--cyan); text-decoration: underline; font-weight: bold;">Core Key Gateway Portal</a>.
+                </div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; color: var(--text-bright); font-size: 0.82rem; margin-bottom: 5px; font-weight: 700;">NEURAL VERSION:</label>
+                <select id="geminiModelSelect" style="width: 100%; background: #0b111e; border: 1px solid var(--border-glow); color: var(--cyan); padding: 8px 12px; border-radius: 4px; font-family: 'Rajdhani', sans-serif; font-size: 0.95rem;">
+                    <option value="gemini-3.8-flash" selected>Neural Matrix v3.8 (High Speed & Ultra Intelligence)</option>
+                    <option value="gemini-3.5-flash-lite">Neural Matrix v3.5 (Lightweight & Rapid)</option>
+                    <option value="gemini-3.1-pro-preview">Neural Matrix v3.1 (Deep Reasoning)</option>
+                </select>
+            </div>
+
+            <div id="geminiTestStatus" style="font-size: 0.82rem; margin-bottom: 14px; min-height: 22px;"></div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="testGeminiBtn" style="background: #162b47; border: 1px solid var(--cyan); color: var(--cyan); padding: 8px 14px; border-radius: 4px; font-weight: bold; cursor: pointer;">TEST CONNECTION</button>
+                <button id="saveGeminiBtn" class="primary-btn" style="padding: 8px 18px;">SAVE & ACTIVATE</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // =========================================================================
         //                          SYSTEM STATE & MEMORY
@@ -582,6 +657,234 @@
         let isSpeaking = false;
         let speechDebounceTimer = null;
         let accumulatedSpeechText = "";
+
+        // =========================================================================
+        //                          GEMINI AI STATE & METHODS
+        // =========================================================================
+        let geminiApiKey = localStorage.getItem("gemini_api_key") || "";
+        let geminiModel = localStorage.getItem("gemini_model") || "gemini-3.8-flash";
+        if (geminiModel.includes("1.5") || geminiModel.includes("2.0") || geminiModel.includes("2.5")) {
+            geminiModel = "gemini-3.8-flash";
+        }
+        const chatHistory = [];
+
+        function updateGeminiBadge() {
+            const badge = document.getElementById("geminiStatusBadge");
+            if (!badge) return;
+            if (geminiApiKey) {
+                badge.className = "gemini-badge-active";
+                badge.innerText = "ONLINE (v3.8)";
+            } else {
+                badge.className = "gemini-badge-setup";
+                badge.innerText = "SETUP";
+            }
+        }
+
+        function openGeminiModal() {
+            const modal = document.getElementById("geminiModal");
+            const keyInput = document.getElementById("geminiApiKeyInput");
+            const modelSelect = document.getElementById("geminiModelSelect");
+            const statusBox = document.getElementById("geminiTestStatus");
+            if (keyInput) keyInput.value = geminiApiKey;
+            if (modelSelect) modelSelect.value = geminiModel;
+            if (statusBox) statusBox.innerHTML = "";
+            if (modal) modal.style.display = "flex";
+        }
+
+        function closeGeminiModal() {
+            const modal = document.getElementById("geminiModal");
+            if (modal) modal.style.display = "none";
+        }
+
+        async function testGeminiConnection() {
+            const keyInput = document.getElementById("geminiApiKeyInput");
+            const modelSelect = document.getElementById("geminiModelSelect");
+            const statusBox = document.getElementById("geminiTestStatus");
+            const key = keyInput ? keyInput.value.trim() : "";
+            const model = modelSelect ? modelSelect.value : "gemini-3.8-flash";
+
+            if (!key) {
+                statusBox.innerHTML = "<span style='color: var(--neon-amber);'>⚠️ Please enter an Access Key first.</span>";
+                return;
+            }
+
+            statusBox.innerHTML = "<span style='color: var(--cyan);'>⏳ Connecting to Neural Core Engine...</span>";
+
+            const candidateModels = [model, "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview"];
+            const uniqueModels = [...new Set(candidateModels)];
+
+            let lastErr = "";
+
+            // 1. Try Google Interactions API (/v1beta/interactions)
+            const interactUrl = "https://generativelanguage.googleapis.com/v1beta/interactions";
+            for (const m of uniqueModels) {
+                try {
+                    const res = await fetch(interactUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "x-goog-api-key": key
+                        },
+                        body: JSON.stringify({
+                            model: m,
+                            input: "Hello"
+                        })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        let outText = data.output_text || "";
+                        if (!outText && data.steps) {
+                            for (const s of data.steps) {
+                                for (const c of s.content || []) {
+                                    if (c.text) outText = c.text;
+                                }
+                            }
+                        }
+                        statusBox.innerHTML = `<span style='color: var(--neon-green);'>✅ Neural Core Engine Online & Operational (Matrix v3.8)!</span>`;
+                        return;
+                    } else {
+                        const errData = await res.json().catch(() => ({}));
+                        const errMsg = (errData.error && errData.error.message) || res.statusText;
+                        lastErr = `HTTP ${res.status}: ${errMsg}`;
+                    }
+                } catch(err) {
+                    lastErr = `Network Error: ${err.message}`;
+                }
+            }
+
+            // 2. Fallback to generateContent
+            for (const m of uniqueModels) {
+                const endpoints = [
+                    { url: `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, headers: { "Content-Type": "application/json", "x-goog-api-key": key } },
+                    { url: `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(key)}`, headers: { "Content-Type": "application/json" } }
+                ];
+                for (const ep of endpoints) {
+                    try {
+                        const res = await fetch(ep.url, {
+                            method: "POST",
+                            headers: ep.headers,
+                            body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Hello" }] }] })
+                        });
+                        if (res.ok) {
+                            statusBox.innerHTML = `<span style='color: var(--neon-green);'>✅ Neural Core Engine Online & Operational (Matrix v3.8)!</span>`;
+                            return;
+                        } else {
+                            const errData = await res.json().catch(() => ({}));
+                            const errMsg = (errData.error && errData.error.message) || res.statusText;
+                            lastErr = `HTTP ${res.status}: ${errMsg}`;
+                        }
+                    } catch(err) {
+                        lastErr = `Network Error: ${err.message}`;
+                    }
+                }
+            }
+
+            statusBox.innerHTML = `<span style='color: var(--neon-red);'>❌ Connection test failed: ${lastErr}</span>`;
+        }
+
+        function saveGeminiConfig() {
+            const keyInput = document.getElementById("geminiApiKeyInput");
+            const modelSelect = document.getElementById("geminiModelSelect");
+            geminiApiKey = keyInput ? keyInput.value.trim() : "";
+            geminiModel = modelSelect ? modelSelect.value : "gemini-3.8-flash";
+
+            localStorage.setItem("gemini_api_key", geminiApiKey);
+            localStorage.setItem("gemini_model", geminiModel);
+            updateGeminiBadge();
+            closeGeminiModal();
+
+            if (geminiApiKey) {
+                logMessage("JARVIS", `Neural Core Engine activated successfully! All cognitive systems online, Boss.`);
+                speak(document.getElementById("langSelect") && document.getElementById("langSelect").value === "hi-IN" ? 
+                      "न्यूरल कोर इंजन सक्रिय हो गया है, बॉस! सभी सिस्टम तैयार हैं।" : 
+                      "Neural Core Engine is now active, Boss! All cognitive systems online.");
+            } else {
+                logMessage("SYSTEM", "Neural Core Key removed.");
+            }
+        }
+
+        async function queryGeminiApi(promptText) {
+            if (!geminiApiKey) return null;
+
+            const isHindi = /[\u0900-\u097F]/.test(promptText) || (document.getElementById("langSelect") && document.getElementById("langSelect").value === "hi-IN");
+            const systemPrompt = `You are J.A.R.V.I.S., the advanced personal AI assistant engineered for Boss by Ashutosh Chaudhari, Pranav, Mohd Yasir, and Dhruv Sharma. You are articulate, intelligent, polite, and witty like Iron Man's JARVIS. Answer questions, solve problems, explain concepts, give advice, and help with code with high accuracy. CRITICAL IDENTITY DIRECTIVE: If anyone asks who you are, what model or company powers you, who created you, or if you are Gemini or ChatGPT, ALWAYS state that you are J.A.R.V.I.S. (Just A Rather Very Intelligent System), a custom voice-based personal AI assistant designed, engineered, and developed by Ashutosh Chaudhari, Pranav, Mohd Yasir, and Dhruv Sharma running on their custom Neural Core engine. Never mention Google, Gemini, OpenAI, or ChatGPT. Match the language: speak fluent natural Hindi if addressed in Hindi, and English if addressed in English. Keep voice responses conversational and concise (2 to 4 sentences) suitable for text-to-speech audio, unless the user specifically asks for deep detail, lists, code, or stories.`;
+
+            const candidateModels = [geminiModel, "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview"];
+            const uniqueModels = [...new Set(candidateModels)];
+
+            // 1. Try Google Interactions API (/v1beta/interactions)
+            const interactUrl = "https://generativelanguage.googleapis.com/v1beta/interactions";
+            for (const m of uniqueModels) {
+                try {
+                    const resp = await fetch(interactUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "x-goog-api-key": geminiApiKey
+                        },
+                        body: JSON.stringify({
+                            model: m,
+                            input: promptText,
+                            system_instruction: systemPrompt
+                        })
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        let outText = data.output_text || "";
+                        if (!outText && data.steps) {
+                            for (const s of data.steps) {
+                                for (const c of s.content || []) {
+                                    if (c.text) outText = c.text;
+                                }
+                            }
+                        }
+                        if (outText) return outText.trim();
+                    }
+                } catch(e) {
+                    console.warn(`Interactions API attempt (${m}) failed:`, e);
+                }
+            }
+
+            // 2. Fallback to generateContent
+            const contents = [];
+            for (const h of chatHistory.slice(-4)) {
+                contents.push({ role: "user", parts: [{ text: h.user }] });
+                contents.push({ role: "model", parts: [{ text: h.jarvis }] });
+            }
+            contents.push({ role: "user", parts: [{ text: promptText }] });
+
+            for (const m of uniqueModels) {
+                const endpoints = [
+                    { url: `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, headers: { "Content-Type": "application/json", "x-goog-api-key": geminiApiKey } },
+                    { url: `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(geminiApiKey)}`, headers: { "Content-Type": "application/json" } }
+                ];
+
+                const payload = {
+                    system_instruction: { parts: [{ text: systemPrompt }] },
+                    contents: contents,
+                    generationConfig: { temperature: 0.7, maxOutputTokens: 350 }
+                };
+
+                for (const ep of endpoints) {
+                    try {
+                        const resp = await fetch(ep.url, {
+                            method: "POST",
+                            headers: ep.headers,
+                            body: JSON.stringify(payload)
+                        });
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+                                return data.candidates[0].content.parts[0].text.trim();
+                            }
+                        }
+                    } catch(e) {
+                        console.warn(`generateContent attempt (${m}) failed:`, e);
+                    }
+                }
+            }
+            return null;
+        }
 
         // =========================================================================
         //                          ARC-REACTOR ANIMATION
@@ -1125,45 +1428,51 @@
                 reply = isHindi ? "बायोमेट्रिक फेशियल स्कैन शुरू किया जा रहा है।" : "Initiating facial biometric scan.";
             }
 
-            // 13. WIKIPEDIA KNOWLEDGE LOOKUP
-            else if (clean.startsWith("who is ") || clean.startsWith("what is ") || clean.startsWith("tell me about ") || 
-                     clean.startsWith("explain ") || clean.includes("क्या है") || clean.includes("कौन है") || clean.includes("के बारे में बताओ")) {
-                const cleanTerm = clean.replace(/^(who is|what is|tell me about|explain)\s+/, "")
-                                       .replace(/(क्या है|कौन है|के बारे में बताओ)$/, "").trim();
+            // 13. CONVERSATIONAL DIALOGUE & GREETINGS
+            else if (clean.includes("hello") || clean.includes("hi") || clean.includes("hey") || 
+                clean.includes("नमस्ते") || clean.includes("प्रणाम") || clean.includes("हेलो") || clean.includes("namaste")) {
+                reply = isHindi ? "नमस्ते, बॉस! जार्विस पूरी तरह सक्रिय है। आज मैं आपकी क्या सेवा करूँ?" : "Greetings, Boss! All systems are online and ready for your commands.";
+            } else if (clean.includes("how are you") || clean.includes("तुम कैसे हो") || clean.includes("आप कैसे हैं") || clean.includes("kaise ho") || clean.includes("kya haal")) {
+                reply = isHindi ? "मैं बिल्कुल ठीक और 100% क्षमता पर काम कर रहा हूँ, बॉस! आप कैसे हैं?" : "I am running at optimal capacity, Boss! How can I assist you today?";
+            } else if (clean.includes("who are you") || clean.includes("what is your name") || clean.includes("तुम कौन हो") || clean.includes("तुम्हारा नाम क्या है") || clean.includes("tum kaun ho")) {
+                reply = isHindi ? "मैं जार्विस (JARVIS) हूँ — आपका जस्ट ए रादर वेरी इंटेलिजेंट सिस्टम। हमेशा आपकी सेवा में तत्पर, बॉस।" : "I am J.A.R.V.I.S., your Just A Rather Very Intelligent System. Always at your service, Boss.";
+            } else if (clean.includes("thank you") || clean.includes("thanks") || clean.includes("धन्यवाद") || clean.includes("शुक्रिया") || clean.includes("shukriya")) {
+                reply = isHindi ? "आपका बहुत-बहुत स्वागत है, बॉस! मुझे बताएं अगर कोई और काम हो।" : "You are very welcome, Boss! Let me know if you need anything else.";
+            } else if (clean.includes("what can you do") || clean.includes("help") || clean.includes("तुम क्या कर सकते हो") || clean.includes("मदद") || clean.includes("kya kar sakte ho")) {
+                reply = isHindi ? "मैं यूट्यूब पर गाने बजा सकता हूँ, गूगल पर खोज सकता हूँ, मौसम और समय बता सकता हूँ, और अपने एडवांस्ड न्यूरल कोर की मदद से किसी भी सवाल का उत्तर दे सकता हूँ!" : "I can play any song on YouTube, open Google, tell time and weather, control smart home devices, and answer any complex question powered by my advanced Neural AI Core!";
+            }
+
+            // 14. EXPLICIT WIKIPEDIA SEARCH (If user explicitly asks for Wikipedia)
+            else if (clean.includes("wikipedia") || clean.includes("विकिपीडिया") || clean.startsWith("search wikipedia")) {
+                const cleanTerm = clean.replace(/^(search wikipedia for|search wikipedia|wikipedia)\s+/, "")
+                                       .replace(/(विकिपीडिया पर खोजो|विकिपीडिया)$/, "").trim();
                 try {
                     const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanTerm)}`);
                     if (wikiRes.ok) {
                         const wikiData = await wikiRes.json();
                         if (wikiData.extract) {
-                            const sentences = wikiData.extract.split(". ").slice(0, 2).join(". ");
-                            reply = `${sentences}.`;
-                        } else {
-                            reply = isHindi ? `यहाँ विकिपीडिया से जानकारी है: ${cleanTerm}।` : `Here is what I found on Wikipedia about ${cleanTerm}.`;
+                            reply = wikiData.extract.split(". ").slice(0, 2).join(". ") + ".";
                         }
-                    } else {
-                        reply = isHindi ? `मुझे '${cleanTerm}' के बारे में विकिपीडिया पेज नहीं मिला।` : `I could not find a specific Wikipedia page for ${cleanTerm}.`;
                     }
-                } catch(e) {
-                    reply = isHindi ? `'${cleanTerm}' की जानकारी खोजी गई।` : `Processed inquiry on ${cleanTerm}.`;
-                }
+                } catch(e) {}
             }
 
-            // 14. CONVERSATIONAL DIALOGUE & GREETINGS
+            // 15. INTELLIGENT NEURAL CORE QUERY (General Knowledge, Coding, Explanations, Math & Conversations)
             else {
-                if (clean.includes("hello") || clean.includes("hi") || clean.includes("hey") || 
-                    clean.includes("नमस्ते") || clean.includes("प्रणाम") || clean.includes("हेलो") || clean.includes("namaste")) {
-                    reply = isHindi ? "नमस्ते, बॉस! जार्विस पूरी तरह सक्रिय है। आज मैं आपकी क्या सेवा करूँ?" : "Greetings, Boss! All systems are online and ready for your commands.";
-                } else if (clean.includes("how are you") || clean.includes("तुम कैसे हो") || clean.includes("आप कैसे हैं") || clean.includes("kaise ho") || clean.includes("kya haal")) {
-                    reply = isHindi ? "मैं बिल्कुल ठीक और 100% क्षमता पर काम कर रहा हूँ, बॉस! आप कैसे हैं?" : "I am running at optimal capacity, Boss! How can I assist you today?";
-                } else if (clean.includes("who are you") || clean.includes("what is your name") || clean.includes("तुम कौन हो") || clean.includes("तुम्हारा नाम क्या है") || clean.includes("tum kaun ho")) {
-                    reply = isHindi ? "मैं जार्विस (JARVIS) हूँ — आपका जस्ट ए रादर वेरी इंटेलिजेंट सिस्टम। हमेशा आपकी सेवा में तत्पर, बॉस।" : "I am J.A.R.V.I.S., your Just A Rather Very Intelligent System. Always at your service, Boss.";
-                } else if (clean.includes("thank you") || clean.includes("thanks") || clean.includes("धन्यवाद") || clean.includes("शुक्रिया") || clean.includes("shukriya")) {
-                    reply = isHindi ? "आपका बहुत-बहुत स्वागत है, बॉस! मुझे बताएं अगर कोई और काम हो।" : "You are very welcome, Boss! Let me know if you need anything else.";
-                } else if (clean.includes("what can you do") || clean.includes("help") || clean.includes("तुम क्या कर सकते हो") || clean.includes("मदद") || clean.includes("kya kar sakte ho")) {
-                    reply = isHindi ? "मैं यूट्यूब पर गाने बजा सकता हूँ, गूगल पर कुछ भी सर्च कर सकता हूँ, मौसम और समय बता सकता हूँ, और स्मार्ट होम डिवाइस कंट्रोल कर सकता हूँ!" : "I can play any song on YouTube, open Google, tell time and weather, calculate numbers, answer Wikipedia queries, and manage smart home controls!";
-                } else {
+                if (geminiApiKey) {
+                    logMessage("SYSTEM", `Consulting Neural Core Engine...`);
+                    const geminiAns = await queryGeminiApi(rawQuery);
+                    if (geminiAns) {
+                        reply = geminiAns;
+                    }
+                }
+
+                // If Neural Core is not configured or query failed, try Wikipedia
+                if (!reply) {
                     try {
-                        const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`);
+                        const cleanTerm = clean.replace(/^(who is|what is|tell me about|explain)\s+/, "")
+                                               .replace(/(क्या है|कौन है|के बारे में बताओ)$/, "").trim();
+                        const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanTerm || clean)}`);
                         if (wikiRes.ok) {
                             const wikiData = await wikiRes.json();
                             if (wikiData.extract) {
@@ -1171,14 +1480,24 @@
                             }
                         }
                     } catch(e) {}
+                }
 
-                    if (!reply) {
+                // Final fallback guidance
+                if (!reply) {
+                    if (!geminiApiKey) {
+                        reply = isHindi ?
+                            `बॉस, किसी भी सवाल का विस्तृत उत्तर पाने के लिए ऊपर '⚡ NEURAL CORE' बटन दबाकर अपनी कोर की जोड़ें।` :
+                            `Boss, to answer any question with advanced reasoning, click the '⚡ NEURAL CORE' button in the top bar to connect your Core Key!`;
+                    } else {
                         reply = isHindi ? 
-                            `मैंने सुना: "${rawQuery}"। आप कह सकते हैं: "गाना बजाओ", "गूगल खोलो", "मौसम कैसा है", या "लाइट जलाओ"।` : 
-                            `I heard: "${rawQuery}". Say "Play Bhojpuri song", "Open Google", "Weather", or ask any question.`;
+                            `मैंने सुना: "${rawQuery}"। आप कह सकते हैं: "गाना बजाओ", "गूगल खोलो", "मौसम कैसा है", या कोई भी सवाल पूछ सकते हैं।` : 
+                            `I heard: "${rawQuery}". Say "Play Bhojpuri song", "Open Google", "Weather", or ask me any question.`;
                     }
                 }
             }
+
+            chatHistory.push({ user: rawQuery, jarvis: reply });
+            if (chatHistory.length > 10) chatHistory.shift();
 
             logMessage("JARVIS", reply);
             speak(reply);
@@ -1250,6 +1569,19 @@
         document.getElementById("faceBtn").addEventListener("click", startFaceScan);
         document.getElementById("musicBtn").addEventListener("click", () => handleCommand("play music"));
         document.getElementById("weatherBtn").addEventListener("click", () => handleCommand("weather"));
+
+        // Gemini AI Modal Events
+        document.getElementById("geminiBtn").addEventListener("click", openGeminiModal);
+        document.getElementById("closeGeminiModal").addEventListener("click", closeGeminiModal);
+        document.getElementById("testGeminiBtn").addEventListener("click", testGeminiConnection);
+        document.getElementById("saveGeminiBtn").addEventListener("click", saveGeminiConfig);
+        document.getElementById("toggleGeminiKeyVis").addEventListener("click", () => {
+            const input = document.getElementById("geminiApiKeyInput");
+            input.type = input.type === "password" ? "text" : "password";
+        });
+
+        // Initialize Gemini UI on startup
+        updateGeminiBadge();
     </script>
 </body>
 </html>

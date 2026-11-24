@@ -5,6 +5,7 @@ __pycache__/
 
 # User dynamic data & personal memory
 jarvis_notes.txt
+jarvis_memory.json
 screenshots/
 *.png
 *.jpg

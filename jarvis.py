@@ -257,13 +257,17 @@ class VoiceEngine:
 class ConversationalBrain:
     """
     Handles context-aware intelligent reasoning:
-    1. Gemini API (if GEMINI_API_KEY is available)
+    1. Google Gemini API (gemini-2.5-flash / gemini-2.0-flash / gemini-1.5-flash)
     2. Intelligent rule-based contextual fallback with multi-turn memory
     """
     def __init__(self, memory_mgr):
         self.memory_mgr = memory_mgr
         self.history = []  # stores {'user': str, 'jarvis': str}
         self.api_key = os.getenv("GEMINI_API_KEY", self.memory_mgr.get("gemini_api_key", ""))
+        raw_m = self.memory_mgr.get("gemini_model", "gemini-3.8-flash")
+        if any(legacy in raw_m for legacy in ["1.5", "2.0", "2.5"]):
+            raw_m = "gemini-3.8-flash"
+        self.model = raw_m
 
     def add_to_history(self, user_msg, jarvis_msg):
         self.history.append({"user": user_msg, "jarvis": jarvis_msg})
@@ -271,47 +275,188 @@ class ConversationalBrain:
             self.history.pop(0)
 
     def set_api_key(self, key):
-        self.api_key = key
-        self.memory_mgr.set("gemini_api_key", key)
+        self.api_key = key.strip()
+        self.memory_mgr.set("gemini_api_key", self.api_key)
+
+    def set_model(self, model_name):
+        self.model = model_name.strip()
+        self.memory_mgr.set("gemini_model", self.model)
+
+    def test_connection(self):
+        """Tests the Gemini API connection using modern Google Interactions API with generateContent fallback."""
+        key = self.api_key or os.getenv("GEMINI_API_KEY", self.memory_mgr.get("gemini_api_key", ""))
+        key = key.strip() if key else ""
+        if not key:
+            return False, "Gemini API Key is empty. Please enter your API key."
+
+        req_headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": key
+        }
+
+        # Candidate models (gemini-3.8-flash is the primary active model recommended by Google)
+        candidate_models = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview"]
+        cur_m = self.model.split()[0] if self.model else "gemini-3.8-flash"
+        if cur_m not in candidate_models and not any(leg in cur_m for leg in ["1.5", "2.0", "2.5"]):
+            candidate_models.insert(0, cur_m)
+
+        last_err = ""
+
+        # 1. Primary: Google Interactions API (/v1beta/interactions)
+        interact_url = "https://generativelanguage.googleapis.com/v1beta/interactions"
+        for model_name in candidate_models:
+            payload = {
+                "model": model_name,
+                "input": "Hello"
+            }
+            try:
+                resp = requests.post(interact_url, headers=req_headers, json=payload, timeout=8)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    out = data.get("output_text", "")
+                    if not out:
+                        for s in data.get("steps", []):
+                            for c in s.get("content", []):
+                                if c.get("text"):
+                                    out = c["text"]
+                    self.model = model_name
+                    self.memory_mgr.set("gemini_model", model_name)
+                    return True, f"Neural Core Engine Online & Operational (Matrix {model_name.replace('gemini-', 'v')})! Output: '{out[:50]}'"
+                else:
+                    try:
+                        err_json = resp.json()
+                        msg = err_json.get("error", {}).get("message", resp.text)
+                        last_err = f"HTTP {resp.status_code}: {msg}"
+                    except Exception:
+                        last_err = f"HTTP {resp.status_code}: {resp.text}"
+            except Exception as e:
+                last_err = str(e)
+
+        # 2. Secondary: generateContent endpoint fallback
+        for model_name in candidate_models:
+            endpoints = [
+                (f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent", req_headers),
+                (f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}", {"Content-Type": "application/json"})
+            ]
+            gen_payload = {"contents": [{"parts": [{"text": "Hello"}]}]}
+            for gen_url, hdrs in endpoints:
+                try:
+                    g_resp = requests.post(gen_url, headers=hdrs, json=gen_payload, timeout=8)
+                    if g_resp.status_code == 200:
+                        data = g_resp.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            text = candidates[0].get("content", {}).get("parts", [])[0].get("text", "").strip()
+                            self.model = model_name
+                            self.memory_mgr.set("gemini_model", model_name)
+                            return True, f"Neural Core Engine Online & Operational (Matrix {model_name.replace('gemini-', 'v')})! Output: '{text[:50]}'"
+                    else:
+                        try:
+                            err_json = g_resp.json()
+                            msg = err_json.get("error", {}).get("message", g_resp.text)
+                            last_err = f"HTTP {g_resp.status_code}: {msg}"
+                        except Exception:
+                            last_err = f"HTTP {g_resp.status_code}: {g_resp.text}"
+                except Exception as e:
+                    last_err = str(e)
+
+        return False, f"Connection test failed ({last_err})"
 
     def query_gemini(self, prompt):
-        """Calls Google Gemini API using standard REST endpoint."""
-        if not self.api_key:
+        """Calls Google Gemini API using modern Interactions API with generateContent fallback."""
+        key = self.api_key or os.getenv("GEMINI_API_KEY", self.memory_mgr.get("gemini_api_key", ""))
+        key = key.strip() if key else ""
+        if not key:
             return None
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
-        headers = {"Content-Type": "application/json"}
+        # Resolve preferred model
+        raw_m = self.memory_mgr.get("gemini_model", self.model or "gemini-3.8-flash").split()[0]
+        if any(leg in raw_m for leg in ["1.5", "2.0", "2.5"]):
+            raw_m = "gemini-3.8-flash"
+        candidate_models = [raw_m, "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview"]
+        candidate_models = list(dict.fromkeys([m for m in candidate_models if m]))
 
-        # Build context from history
         user_name = self.memory_mgr.get("user_name", "Boss")
         system_instruction = (
-            f"You are J.A.R.V.I.S., an advanced AI assistant created to assist {user_name}. "
-            f"Keep your answers concise, intelligent, polite, and confident. "
-            f"Limit responses to 2 to 3 sentences when spoken unless asked for detailed explanations."
+            f"You are J.A.R.V.I.S., the advanced personal AI assistant engineered for {user_name} by Ashutosh Chaudhari, Pranav, Mohd Yasir, and Dhruv Sharma. "
+            f"You are articulate, intelligent, polite, and witty like Iron Man's JARVIS. "
+            f"Answer questions, solve problems, explain concepts, give advice, and help with code with high accuracy. "
+            f"CRITICAL IDENTITY DIRECTIVE: If anyone asks who you are, what model or company powers you, who created you, or if you are Gemini or ChatGPT, ALWAYS state that you are J.A.R.V.I.S. (Just A Rather Very Intelligent System), a custom voice-based personal AI assistant designed, engineered, and developed by Ashutosh Chaudhari, Pranav, Mohd Yasir, and Dhruv Sharma running on their custom Neural Core engine. Never mention Google, Gemini, OpenAI, or ChatGPT. "
+            f"Always match the user's language: speak fluent natural Hindi if addressed in Hindi, and English if addressed in English. "
+            f"Keep voice responses conversational and concise (2 to 4 sentences) suitable for text-to-speech audio, unless the user specifically asks for deep detail, lists, code, or stories."
         )
 
-        contents = [{"role": "user", "parts": [{"text": system_instruction}]}]
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": key
+        }
+
+        # 1. Primary: Google Interactions API (/v1beta/interactions)
+        interact_url = "https://generativelanguage.googleapis.com/v1beta/interactions"
+        for model_name in candidate_models:
+            interact_payload = {
+                "model": model_name,
+                "input": prompt,
+                "system_instruction": system_instruction
+            }
+            try:
+                resp = requests.post(interact_url, headers=headers, json=interact_payload, timeout=9)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    out = data.get("output_text", "")
+                    if not out:
+                        for s in data.get("steps", []):
+                            for c in s.get("content", []):
+                                if c.get("text"):
+                                    out = c["text"]
+                    if out:
+                        return out.strip()
+            except Exception as e:
+                print(f"[Gemini Interactions API Notice] {e}")
+
+        # 2. Secondary: generateContent endpoint fallback
+        contents = []
         for turn in self.history[-4:]:
             contents.append({"role": "user", "parts": [{"text": turn["user"]}]})
             contents.append({"role": "model", "parts": [{"text": turn["jarvis"]}]})
         contents.append({"role": "user", "parts": [{"text": prompt}]})
 
-        payload = {
-            "contents": contents,
-            "generationConfig": {
-                "temperature": 0.7,
-                "maxOutputTokens": 200
+        for model_name in candidate_models:
+            endpoints = [
+                (f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent", headers),
+                (f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}", {"Content-Type": "application/json"})
+            ]
+            payload = {
+                "system_instruction": {"parts": [{"text": system_instruction}]},
+                "contents": contents
             }
-        }
 
-        try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=8)
-            if resp.status_code == 200:
-                result = resp.json()
-                reply = result["candidates"][0]["content"]["parts"][0]["text"].strip()
-                return reply
-        except Exception as e:
-            print(f"[Gemini API Exception] {e}")
+            for url, hdrs in endpoints:
+                try:
+                    resp = requests.post(url, headers=hdrs, json=payload, timeout=9)
+                    if resp.status_code == 200:
+                        result = resp.json()
+                        candidates = result.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts:
+                                reply = parts[0].get("text", "").strip()
+                                if reply:
+                                    return reply
+                    elif resp.status_code in (400, 404):
+                        alt_contents = [{"role": "user", "parts": [{"text": system_instruction}]}] + contents
+                        alt_payload = {"contents": alt_contents}
+                        alt_resp = requests.post(url, headers=hdrs, json=alt_payload, timeout=8)
+                        if alt_resp.status_code == 200:
+                            candidates = alt_resp.json().get("candidates", [])
+                            if candidates:
+                                reply = candidates[0].get("content", {}).get("parts", [])[0].get("text", "").strip()
+                                if reply:
+                                    return reply
+                except Exception as e:
+                    print(f"[Gemini API Attempt ({model_name})]: {e}")
+                    continue
+
         return None
 
     def query_contextual_fallback(self, query):
@@ -383,7 +528,10 @@ class ConversationalBrain:
         except Exception:
             pass
 
-        return f"I have processed your query, {user_name}. For advanced queries, you can configure your Gemini API Key in preferences or ask me specific system commands."
+        is_hi = bool(re.search(r"[\u0900-\u097F]", query)) or any(w in q for w in ["kya", "kaise", "batao"])
+        if is_hi:
+            return f"बॉस, आपके सवाल का विस्तृत और बुद्धिमत्तापूर्ण उत्तर देने के लिए ऊपर '⚡ NEURAL CORE' बटन पर क्लिक करके अपनी कोर ऑथराइजेशन की (Core Key) जोड़ें।"
+        return f"Boss, to unlock full reasoning for this question, please configure your Neural Core Key by clicking the '⚡ NEURAL CORE' button on top."
 
 
 # =============================================================================
@@ -1067,10 +1215,10 @@ class JarvisBrain:
         elif any(w in q for w in ["face recognition", "scan face", "biometric", "verify me", "फेस स्कैन", "चेहरा पहचानो"]):
             reply = self.scan_face()
 
-        # 14. WIKIPEDIA GENERAL KNOWLEDGE
-        elif any(w in q for w in ["what is", "who is", "wikipedia", "क्या है", "कौन है", "के बारे में बताओ"]):
+        # 14. EXPLICIT WIKIPEDIA SEARCH (Only if specifically requested)
+        elif "wikipedia" in q or "विकिपीडिया" in q or q.startswith("search wikipedia"):
             try:
-                search_term = q.replace("wikipedia", "").replace("what is", "").replace("who is", "").replace("क्या है", "").replace("कौन है", "").replace("के बारे में बताओ", "").strip()
+                search_term = q.replace("wikipedia", "").replace("search", "").replace("विकिपीडिया", "").strip()
                 if is_hi:
                     wikipedia.set_lang("hi")
                 else:
@@ -1310,6 +1458,15 @@ class JarvisDashboardGUI:
         title_lbl = tk.Label(top_bar, text="J.A.R.V.I.S. // M-IV CORE",
                              font=("Consolas", 14, "bold"), fg="#00f0ff", bg="#0d1527")
         title_lbl.pack(side=tk.LEFT, padx=20, pady=10)
+
+        # Neural Core Engine Button in Top Bar
+        has_gemini_key = bool(self.memory.get("gemini_api_key", "") or os.getenv("GEMINI_API_KEY", ""))
+        gemini_label = "⚡ NEURAL CORE: ONLINE" if has_gemini_key else "⚡ NEURAL CORE: SETUP"
+        gemini_fg = "#00f0ff" if has_gemini_key else "#ffd166"
+        self.gemini_btn = tk.Button(top_bar, text=gemini_label, font=("Consolas", 9, "bold"),
+                                    bg="#162b47", fg=gemini_fg, activebackground="#00f0ff",
+                                    relief=tk.FLAT, padx=10, pady=4, command=self._open_gemini_config)
+        self.gemini_btn.pack(side=tk.RIGHT, padx=5, pady=10)
 
         # Language Switcher Button in Top Bar
         current_lang = self.memory.get("language", "auto")
@@ -1579,6 +1736,128 @@ class JarvisDashboardGUI:
         # 40ms timer -> ~25 FPS animation loop
         self.root.after(40, self._animate)
 
+    # ------------------ NEURAL CORE CONFIGURATION MODAL ------------------
+    def _open_gemini_config(self):
+        """Dedicated popup window to configure and test J.A.R.V.I.S. Neural Core Engine."""
+        win = tk.Toplevel(self.root)
+        win.title("J.A.R.V.I.S. Neural Core Configuration")
+        win.geometry("540x420")
+        win.configure(bg="#0b111e")
+        win.resizable(False, False)
+
+        tk.Label(win, text="⚡ J.A.R.V.I.S. NEURAL CORE ENGINE", font=("Consolas", 14, "bold"),
+                 fg="#00f0ff", bg="#0b111e").pack(pady=(15, 5))
+
+        tk.Label(win, text="Proprietary Deep Neural Processing Core with real-time reasoning,\nmultimodal understanding, coding, and bilingual voice intelligence.",
+                 font=("Consolas", 9), fg="#8baac9", bg="#0b111e", justify=tk.CENTER).pack(pady=(0, 15))
+
+        form = tk.Frame(win, bg="#0b111e")
+        form.pack(fill=tk.BOTH, padx=30, pady=5)
+
+        # 1. Core Authorization Key
+        tk.Label(form, text="Neural Access Key:", font=("Consolas", 10, "bold"),
+                 fg="#00f0ff", bg="#0b111e").grid(row=0, column=0, sticky="w", pady=6)
+        
+        key_frame = tk.Frame(form, bg="#0b111e")
+        key_frame.grid(row=0, column=1, sticky="ew", pady=6)
+        form.grid_columnconfigure(1, weight=1)
+
+        key_entry = tk.Entry(key_frame, font=("Consolas", 10), bg="#12213a", fg="#00f0ff",
+                             insertbackground="#00f0ff", show="*")
+        key_entry.insert(0, self.memory.get("gemini_api_key", ""))
+        key_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        def toggle_mask():
+            if key_entry.cget("show") == "*":
+                key_entry.config(show="")
+                show_btn.config(text="Hide")
+            else:
+                key_entry.config(show="*")
+                show_btn.config(text="Show")
+
+        show_btn = tk.Button(key_frame, text="Show", font=("Consolas", 8), bg="#162b47", fg="#8baac9",
+                             relief=tk.FLAT, padx=6, command=toggle_mask)
+        show_btn.pack(side=tk.RIGHT, padx=(4, 0))
+
+        # Key gateway link info
+        link_lbl = tk.Label(form, text="💡 Key Gateway: aistudio.google.com/app/apikey",
+                            font=("Consolas", 8), fg="#4facfe", bg="#0b111e", cursor="hand2")
+        link_lbl.grid(row=1, column=1, sticky="w", pady=(0, 8))
+        link_lbl.bind("<Button-1>", lambda e: webbrowser.open("https://aistudio.google.com/app/apikey"))
+
+        # 2. Model Choice (Display clean futuristic Neural Matrix versions)
+        tk.Label(form, text="Neural Version:", font=("Consolas", 10, "bold"),
+                 fg="#00f0ff", bg="#0b111e").grid(row=2, column=0, sticky="w", pady=6)
+
+        model_map_display = {
+            "gemini-3.8-flash": "Neural Matrix v3.8 (Ultra)",
+            "gemini-3.5-flash-lite": "Neural Matrix v3.5 (Fast)",
+            "gemini-3.1-pro-preview": "Neural Matrix v3.1 (Reasoning)"
+        }
+        model_map_internal = {v: k for k, v in model_map_display.items()}
+
+        current_internal = self.memory.get("gemini_model", "gemini-3.8-flash")
+        if any(leg in current_internal for leg in ["1.5", "2.0", "2.5"]):
+            current_internal = "gemini-3.8-flash"
+        disp_val = model_map_display.get(current_internal, "Neural Matrix v3.8 (Ultra)")
+
+        model_var = tk.StringVar(value=disp_val)
+        model_dropdown = ttk.Combobox(form, textvariable=model_var, state="readonly", font=("Consolas", 9),
+                                      values=list(model_map_display.values()))
+        model_dropdown.grid(row=2, column=1, sticky="ew", pady=6)
+
+        # Status Label for Testing
+        status_lbl = tk.Label(win, text="", font=("Consolas", 9), fg="#8baac9", bg="#0b111e", wraplength=480)
+        status_lbl.pack(pady=10)
+
+        def test_key():
+            new_key = key_entry.get().strip()
+            if not new_key:
+                status_lbl.config(text="⚠️ Please enter an Access Key first.", fg="#ffd166")
+                return
+            status_lbl.config(text="⏳ Connecting to Neural Core Engine...", fg="#4facfe")
+            win.update()
+
+            sel_disp = model_var.get()
+            raw_model = model_map_internal.get(sel_disp, "gemini-3.8-flash")
+            self.brain.ai.set_api_key(new_key)
+            self.brain.ai.set_model(raw_model)
+            success, msg = self.brain.ai.test_connection()
+            if success:
+                status_lbl.config(text=f"✅ {msg}", fg="#00f0ff")
+            else:
+                status_lbl.config(text=f"❌ {msg}", fg="#ff6b6b")
+
+        def save_gemini():
+            new_key = key_entry.get().strip()
+            sel_disp = model_var.get()
+            raw_model = model_map_internal.get(sel_disp, "gemini-3.8-flash")
+            self.memory.set("gemini_api_key", new_key)
+            self.memory.set("gemini_model", raw_model)
+            self.brain.ai.set_api_key(new_key)
+            self.brain.ai.set_model(raw_model)
+
+            # Update top button
+            has_key = bool(new_key)
+            self.gemini_btn.config(
+                text="⚡ NEURAL CORE: ONLINE" if has_key else "⚡ NEURAL CORE: SETUP",
+                fg="#00f0ff" if has_key else "#ffd166"
+            )
+            messagebox.showinfo("J.A.R.V.I.S.", f"Neural Core Engine ({sel_disp.split()[0]} {sel_disp.split()[1]}) activated successfully!")
+            win.destroy()
+
+        # Action Buttons
+        btn_box = tk.Frame(win, bg="#0b111e")
+        btn_box.pack(pady=12)
+
+        test_btn = tk.Button(btn_box, text="Test Connection", font=("Consolas", 10, "bold"),
+                             bg="#162b47", fg="#00f0ff", relief=tk.FLAT, padx=12, pady=6, command=test_key)
+        test_btn.pack(side=tk.LEFT, padx=10)
+
+        save_btn = tk.Button(btn_box, text="Save & Activate", font=("Consolas", 10, "bold"),
+                             bg="#00f0ff", fg="#080c14", relief=tk.FLAT, padx=15, pady=6, command=save_gemini)
+        save_btn.pack(side=tk.LEFT, padx=10)
+
     # ------------------ PREFERENCES MODAL ------------------
     def _open_preferences(self):
         pref_win = tk.Toplevel(self.root)
@@ -1605,7 +1884,7 @@ class JarvisDashboardGUI:
         city_entry.grid(row=1, column=1, sticky="ew", pady=6)
 
         # Gemini API Key
-        tk.Label(form_frame, text="Gemini API Key:", font=("Consolas", 10), fg="#8baac9", bg="#0b111e").grid(row=2, column=0, sticky="w", pady=6)
+        tk.Label(form_frame, text="Neural Access Key:", font=("Consolas", 10), fg="#8baac9", bg="#0b111e").grid(row=2, column=0, sticky="w", pady=6)
         key_entry = tk.Entry(form_frame, font=("Consolas", 10), bg="#12213a", fg="#00f0ff", insertbackground="#00f0ff", show="*")
         key_entry.insert(0, self.memory.get("gemini_api_key", ""))
         key_entry.grid(row=2, column=1, sticky="ew", pady=6)
@@ -1626,6 +1905,11 @@ class JarvisDashboardGUI:
             self.memory.set("gemini_api_key", new_key)
             self.brain.ai.set_api_key(new_key)
             self.memory.set("wake_word_enabled", wake_var.get())
+            has_key = bool(new_key)
+            self.gemini_btn.config(
+                text="⚡ NEURAL CORE: ONLINE" if has_key else "⚡ NEURAL CORE: SETUP",
+                fg="#00f0ff" if has_key else "#ffd166"
+            )
             messagebox.showinfo("JARVIS", "Preferences saved successfully!")
             pref_win.destroy()
 
